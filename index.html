@@ -683,10 +683,15 @@ function processSheet1(rows) {
     const cols = Object.values(rows[i]);
     if (cols.every(v => v === null || v === undefined)) continue;
 
-    // Check if it's a year row
-    if (typeof cols[0] === 'number' && cols[0] > 2000 && cols[0] < 2100) currentYear = cols[0];
+    // Detectar año: puede ser número o string, en col 0
+    // XLSX con raw:false convierte todo a string
+    const col0 = cols[0];
+    if (col0 !== null && col0 !== undefined && col0 !== '') {
+      const yr = parseInt(col0);
+      if (!isNaN(yr) && yr > 2000 && yr < 2100) currentYear = yr;
+    }
     const mes = cols[1] ? String(cols[1]).toUpperCase().trim() : null;
-    if (!mes || !MESES.includes(mes)) continue; // skip subtotals
+    if (!mes || !MESES.includes(mes)) continue; // skip subtotals y totales
     if (!currentYear) continue;
 
     const key = currentYear + '-' + String(MESES.indexOf(mes)+1).padStart(2,'0');
@@ -738,10 +743,11 @@ function processSheet2(rows) {
 
   for (let i=0; i<rows.length; i++) {
     const cols = Object.values(rows[i]);
-    // Detect year (col B = index 1)
+    // Detect year (col B = index 1) — puede llegar como string con raw:false
     const possibleYear = cols[1];
-    if (typeof possibleYear === 'number' && possibleYear > 2015 && possibleYear < 2100) {
-      currentYear = possibleYear;
+    if (possibleYear !== null && possibleYear !== undefined && possibleYear !== '') {
+      const yr2 = parseInt(possibleYear);
+      if (!isNaN(yr2) && yr2 > 2015 && yr2 < 2100) currentYear = yr2;
     }
     // Detect header row
     if (cols[2] && String(cols[2]).toUpperCase().trim() === 'ENTIDAD') {

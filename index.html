@@ -2147,18 +2147,25 @@ async function cargarUsuarios() {
     const el = document.getElementById('lista-usuarios');
     if (!el) return;
     if (!users.length) { el.innerHTML='<div class="empty"><div class="empty-txt">Sin usuarios creados.</div></div>'; return; }
-    el.innerHTML = `<table>
-      <thead><tr><th style="text-align:left">Nombre</th><th style="text-align:left">Usuario</th><th style="text-align:left">Rol</th><th>Estado</th><th>Creado</th></tr></thead>
-      <tbody>'+users.map(function(u){
-        return '<tr>'+
-          '<td style="font-weight:500">'+u.nombre+'</td>'+
-          '<td style="font-family:var(--mono);font-size:12px">'+u.usuario+'</td>'+
-          '<td><span class="badge '+(u.rol==='admin'?'badge-blue':'badge-green')+'">'+(u.rol||'viewer')+'</span></td>'+
-          '<td><span class="badge '+(u.activo?'badge-green':'badge-red')+'">'+(u.activo?'Activo':'Inactivo')+'</span></td>'+
-          '<td style="font-size:12px;color:var(--text-light)">'+new Date(u.created_at).toLocaleDateString('es-CO')+'</td>'+
-        '</tr>';
-      }).join('')+'</tbody>
-    </table>`;
+    var filas = users.map(function(u){
+      return '<tr>'+
+        '<td style="font-weight:500">'+u.nombre+'</td>'+
+        '<td style="font-family:var(--mono);font-size:12px">'+u.usuario+'</td>'+
+        '<td><span class="badge '+(u.rol==='admin'?'badge-blue':'badge-green')+'">'+(u.rol||'viewer')+'</span></td>'+
+        '<td><span class="badge '+(u.activo?'badge-green':'badge-red')+'">'+(u.activo?'Activo':'Inactivo')+'</span></td>'+
+        '<td style="font-size:12px;color:var(--text-light)">'+new Date(u.created_at).toLocaleDateString('es-CO')+'</td>'+
+      '</tr>';
+    }).join('');
+    el.innerHTML = '<table>'+
+      '<thead><tr>'+
+        '<th style="text-align:left">Nombre</th>'+
+        '<th style="text-align:left">Usuario</th>'+
+        '<th style="text-align:left">Rol</th>'+
+        '<th>Estado</th>'+
+        '<th>Creado</th>'+
+      '</tr></thead>'+
+      '<tbody>'+filas+'</tbody>'+
+    '</table>';
   } catch(e) { console.warn('Error cargando usuarios:', e.message); }
 }
 

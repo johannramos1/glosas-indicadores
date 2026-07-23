@@ -1170,16 +1170,18 @@ function renderResumen() {
     const gViva = Math.max(0, d.totGlosa - d.totAcept);
     const isCurrent = y === curYear;
     totRad_t+=d.totRad; totGlo_t+=d.totGlosa; totRec_t+=d.totAcept; totNoRec_t+=d.totNoRec; totCue_t+=d.totCuentas;
-    html += '<tr'+(isCurrent?' style="background:#f0faf3;"':'')+'>\n      <td><strong>'+y+'</strong>'+(isCurrent?' <span class="badge badge-green">Actual</span>':'')+' </td>'
-      <td class="mono">${fmtCOP(d.totRad)}</td>
-      <td class="mono" style="color:var(--c-glosa-ini)">${fmtCOP(d.totGlosa)}</td>
-      <td>${pG>0.3?'<span class="badge badge-red">':'<span class="badge '+(pG>0.1?'badge-amber':'badge-green')+'">'} ${fmtPct(pG)}</span></td>
-      <td class="mono" style="color:var(--c-glosa-viva)">${fmtCOP(gViva)}</td>
-      <td class="mono" style="color:var(--c-pago-ini)">${fmtCOP(d.totAcept)}</td>
-      <td class="mono" style="color:var(--c-nc)">${fmtCOP(d.totNoRec)}</td>
-      <td>${fmtPct(pN)}</td>
-      <td class="mono">${fmt0(d.totCuentas)}</td>
-    </tr>`;
+    html +=
+      '<tr'+(isCurrent?' style="background:#f0faf3;"':'')+'>'+
+      '<td><strong>'+y+'</strong>'+(isCurrent?' <span class="badge badge-green">Actual</span>':'')+' </td>'+
+      '<td class="mono">'+fmtCOP(d.totRad)+'</td>'+
+      '<td class="mono" style="color:var(--c-glosa-ini)">'+fmtCOP(d.totGlosa)+'</td>'+
+      '<td>'+(pG>0.3?'<span class="badge badge-red">':'<span class="badge '+(pG>0.1?'badge-amber':'badge-green')+'">')+fmtPct(pG)+'</span></td>'+
+      '<td class="mono" style="color:var(--c-glosa-viva)">'+fmtCOP(gViva)+'</td>'+
+      '<td class="mono" style="color:var(--c-pago-ini)">'+fmtCOP(d.totAcept)+'</td>'+
+      '<td class="mono" style="color:var(--c-nc)">'+fmtCOP(d.totNoRec)+'</td>'+
+      '<td>'+fmtPct(pN)+'</td>'+
+      '<td class="mono">'+fmt0(d.totCuentas)+'</td>'+
+      '</tr>';
   });
   const tpG = totRad_t>0?totGlo_t/totRad_t:0;
   const tpN = totRad_t>0?totNoRec_t/totRad_t:0;
@@ -1693,24 +1695,24 @@ function buildComparativoUI(ipsId, snaps) {
     <div style="font-size:13px;font-weight:700;color:var(--text-dark);margin-bottom:4px">② Seleccione los 2 cortes a comparar</div>
     <div style="font-size:12px;color:var(--text-light);margin-bottom:12px">Haga clic en el primer corte (Escenario A <span style="background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700">A</span>) y luego en el segundo (Escenario B <span style="background:#fef3c7;color:#b45309;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700">B</span>).</div>
     <div class="comp-hist-snap-list">
-      ${snaps.map((s,i) => {
-        const isA = COMP_STATE.snapA && COMP_STATE.snapA.id === s.id;
-        const isB = COMP_STATE.snapB && COMP_STATE.snapB.id === s.id;
-        const hasYearData = s.data && s.data.byYear && s.data.byYear[yearFilter];
-        const savedFmt = new Date(s.saved_at).toLocaleString('es-CO',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
-        return '<div class="snap-item '+(isA?'selected-a':'')+(isB?' selected-b':'')+(!hasYearData?'':' hover')+'"'
-          onclick="compSelectSnap(${i})"
-          title="${hasYearData?'':'Sin datos para '+yearFilter+' en este corte'}">
-          <div>
-            <div class="si-cutoff">Corte: ${s.cutoff_str}</div>
-            <div class="si-saved">Cargado: ${savedFmt}${!hasYearData?' · <em style=\'color:#dc2626\'>Sin datos '+yearFilter+'</em>':''}</div>
-          </div>
-          <div style="display:flex;align-items:center;gap:6px">
-            ${isA?'<span class="snap-item si-badge si-badge-a">A</span>':''}
-            ${isB?'<span class="snap-item si-badge si-badge-b">B</span>':''}
-            ${!isA&&!isB&&hasYearData?'<span style="font-size:11px;color:var(--text-light)">Seleccionar</span>':''}
-          </div>
-        </div>`;
+      ${snaps.map(function(s,i){
+        var isA = COMP_STATE.snapA && COMP_STATE.snapA.id === s.id;
+        var isB = COMP_STATE.snapB && COMP_STATE.snapB.id === s.id;
+        var hasYearData = s.data && s.data.byYear && s.data.byYear[yearFilter];
+        var savedFmt = new Date(s.saved_at).toLocaleString('es-CO',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+        var cls = 'snap-item'+(isA?' selected-a':'')+(isB?' selected-b':'');
+        var noDataNote = !hasYearData ? ' · <em style="color:#dc2626">Sin datos '+yearFilter+'</em>' : '';
+        var badges = (isA?'<span class="snap-item si-badge si-badge-a">A</span>':'')+
+                     (isB?'<span class="snap-item si-badge si-badge-b">B</span>':'')+
+                     (!isA&&!isB&&hasYearData?'<span style="font-size:11px;color:var(--text-light)">Seleccionar</span>':'');
+        return '<div class="'+cls+'" onclick="compSelectSnap('+i+')"'+
+               (!hasYearData?' title="Sin datos '+yearFilter+' en este corte"':'')+'>'+
+               '<div>'+
+                 '<div class="si-cutoff">Corte: '+s.cutoff_str+'</div>'+
+                 '<div class="si-saved">Cargado: '+savedFmt+noDataNote+'</div>'+
+               '</div>'+
+               '<div style="display:flex;align-items:center;gap:6px">'+badges+'</div>'+
+               '</div>';
       }).join('')}
     </div>
   </div>`;

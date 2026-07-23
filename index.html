@@ -698,7 +698,8 @@ function processSheet1(rows) {
 
   for (let i = headerRow+1; i < rows.length; i++) {
     const r = rows[i]; // array directo — índice = columna Excel real
-    if (!r || r.every(v => v === null || v === undefined)) continue;
+    if (!r || !Array.isArray(r)) continue;
+    if (r.every(v => v === null || v === undefined)) continue;
 
     // Detectar año en col 0 (colA)
     const col0 = r[0];

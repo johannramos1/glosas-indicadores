@@ -577,9 +577,18 @@ async function initApp() {
 // ═══════════════════════════════════════════════
 async function saveToSupabase(ipsId, data) {
   try {
-    await sbU(SNAP_TABLE, [{ ips_id:ipsId, data:data, updated_at:new Date().toISOString() }], 'ips_id');
+    // DELETE existente luego INSERT — evita dependencia de constraint UPSERT
+    await fetch(SB+'/rest/v1/'+SNAP_TABLE+'?ips_id=eq.'+ipsId, {
+      method:'DELETE', headers: H_MIN
+    });
+    const r = await fetch(SB+'/rest/v1/'+SNAP_TABLE, {
+      method:'POST',
+      headers: Object.assign({},H,{'Prefer':'return=minimal'}),
+      body: JSON.stringify({ ips_id:ipsId, data:data, updated_at:new Date().toISOString() })
+    });
+    if (!r.ok) throw new Error(await r.text());
     toast('✓ Guardado en la nube · ' + ipsStore[ipsId].name);
-  } catch(e) { toast('⚠ Sin conexión — datos solo en dispositivo', true); }
+  } catch(e) { toast('⚠ Error al guardar: ' + e.message, true); }
 }
 
 // Guarda cada cargue como entrada inmutable en el historial de cortes

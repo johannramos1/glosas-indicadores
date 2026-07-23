@@ -1,0 +1,2186 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Indicadores de Glosas · Informe Gerencial</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Paleta ADRES unificada */
+  --c-pago-ini:   #2d9e6b;
+  --c-pago-fin:   #1d6ca8;
+  --c-glosa-ini:  #e5a800;
+  --c-glosa-viva: #8b5cf6;
+  --c-nc:         #dc2626;
+
+  --dolormed:     #2d6a4f;
+  --dolormed-lt:  #d8f3dc;
+  --dolormed-pale:#f0faf3;
+  --redesimat:    #1d3557;
+  --redesimat-lt: #cce5f5;
+  --redesimat-pale:#f0f7fc;
+
+  --text-dark:  #111827;
+  --text-mid:   #374151;
+  --text-light: #6b7280;
+  --border:     #e5e7eb;
+  --surface:    #f9fafb;
+  --white:      #ffffff;
+  --radius:     12px;
+  --shadow:     0 1px 3px rgba(0,0,0,.08), 0 6px 20px rgba(0,0,0,.06);
+  --shadow-lg:  0 4px 16px rgba(0,0,0,.1);
+  --mono: 'DM Mono', monospace;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'DM Sans',sans-serif; background:#f0f2f5; color:var(--text-dark); min-height:100vh; }
+
+/* ======= LOGIN ======= */
+#login-screen {
+  min-height:100vh; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(135deg,#0f2d1e 0%,#1b4332 45%,#2d6a4f 100%);
+}
+.login-box {
+  background:#fff; border-radius:20px; padding:44px 40px;
+  width:360px; box-shadow:0 20px 60px rgba(0,0,0,.25);
+}
+.login-logo { text-align:center; margin-bottom:24px; }
+.login-logo .brand { font-family:'Playfair Display',serif; font-size:22px; color:var(--dolormed); margin-top:10px; }
+.login-logo .sub { font-size:12px; color:var(--text-light); margin-top:2px; }
+.login-title { font-size:16px; font-weight:700; color:var(--text-dark); margin-bottom:4px; }
+.login-desc { font-size:12px; color:var(--text-light); margin-bottom:24px; }
+.lf { margin-bottom:14px; }
+.lf label { display:block; font-size:11px; font-weight:600; color:var(--text-mid); margin-bottom:4px; text-transform:uppercase; letter-spacing:.4px; }
+.lf input { width:100%; padding:10px 14px; border:1.5px solid var(--border); border-radius:8px; font-family:'DM Sans',sans-serif; font-size:14px; outline:none; transition:.15s; }
+.lf input:focus { border-color:var(--dolormed); box-shadow:0 0 0 3px rgba(45,106,79,.12); }
+.login-btn { width:100%; padding:12px; background:var(--dolormed); color:#fff; border:none; border-radius:8px; font-family:'DM Sans',sans-serif; font-size:14px; font-weight:600; cursor:pointer; transition:.15s; margin-top:4px; }
+.login-btn:hover { background:#1b4332; }
+.login-error { margin-top:12px; padding:9px 12px; background:#fef2f2; border:1px solid #fecaca; border-radius:6px; color:#dc2626; font-size:12px; display:none; }
+.login-footer { text-align:center; font-size:11px; color:#9ca3af; margin-top:20px; }
+
+/* ======= APP SHELL ======= */
+#app-shell { display:none; height:100vh; flex-direction:column; }
+
+/* TOP BAR */
+.topbar {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 24px; height:56px; background:#fff;
+  border-bottom:1px solid var(--border); flex-shrink:0; gap:16px;
+  box-shadow:0 1px 4px rgba(0,0,0,.05);
+}
+.topbar-brand { display:flex; align-items:center; gap:10px; }
+.topbar-brand .logo-icon { width:32px; height:32px; background:var(--dolormed); border-radius:8px; display:flex; align-items:center; justify-content:center; }
+.topbar-brand .logo-icon svg { width:18px; height:18px; fill:#fff; }
+.topbar-title { font-family:'Playfair Display',serif; font-size:16px; font-weight:700; color:var(--text-dark); }
+.topbar-sub { font-size:11px; color:var(--text-light); }
+.topbar-right { display:flex; align-items:center; gap:12px; }
+.topbar-user { font-size:12px; color:var(--text-mid); font-weight:500; }
+.topbar-ips-badge { padding:4px 10px; border-radius:20px; font-size:11px; font-weight:600; background:var(--dolormed-lt); color:var(--dolormed); }
+.topbar-cutoff { font-size:11px; color:var(--text-light); }
+.btn-logout { padding:7px 14px; background:transparent; border:1.5px solid var(--border); border-radius:8px; font-size:12px; font-weight:600; color:var(--text-mid); cursor:pointer; transition:.15s; }
+.btn-logout:hover { background:#fee2e2; border-color:#fca5a5; color:#dc2626; }
+
+/* MAIN LAYOUT */
+.app-body { display:flex; flex:1; overflow:hidden; }
+
+/* SIDEBAR */
+.sidebar {
+  width:220px; flex-shrink:0; background:#fff; border-right:1px solid var(--border);
+  display:flex; flex-direction:column; overflow-y:auto;
+}
+.sb-section { padding:16px 12px 8px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:var(--text-light); }
+.sb-item {
+  display:flex; align-items:center; gap:10px; padding:9px 14px;
+  font-size:13px; color:var(--text-mid); cursor:pointer; border-radius:8px; margin:1px 6px;
+  transition:.12s; font-weight:500;
+}
+.sb-item:hover { background:var(--surface); color:var(--text-dark); }
+.sb-item.active { background:var(--dolormed-lt); color:var(--dolormed); font-weight:600; }
+.sb-item .sb-icon { width:18px; height:18px; opacity:.6; }
+.sb-item.active .sb-icon { opacity:1; }
+.sb-ips-card { margin:6px; border-radius:10px; padding:10px 12px; border:1.5px solid var(--border); cursor:pointer; transition:.15s; }
+.sb-ips-card:hover { border-color:var(--dolormed); }
+.sb-ips-card.active { border-color:var(--dolormed); background:var(--dolormed-pale); }
+.sb-ips-card .ips-name { font-size:13px; font-weight:700; margin-bottom:2px; }
+.sb-ips-card .ips-cutoff { font-size:10px; color:var(--text-light); }
+.sb-ips-card .ips-dot { width:7px; height:7px; border-radius:50%; display:inline-block; margin-right:5px; background:#d1d5db; }
+.sb-ips-card .ips-dot.ok { background:#22c55e; }
+.sb-divider { height:1px; background:var(--border); margin:8px 12px; }
+
+/* MAIN CONTENT */
+.main-content { flex:1; overflow-y:auto; padding:24px; }
+
+/* CARDS & SECTIONS */
+.section-title {
+  font-family:'Playfair Display',serif; font-size:20px; font-weight:700;
+  color:var(--text-dark); margin-bottom:4px;
+}
+.section-sub { font-size:12px; color:var(--text-light); margin-bottom:20px; }
+
+/* KPI GRID */
+.kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; margin-bottom:24px; }
+.kpi-card {
+  background:#fff; border-radius:var(--radius); padding:18px 20px;
+  box-shadow:var(--shadow); border-top:4px solid #e5e7eb; transition:.15s;
+}
+.kpi-card:hover { transform:translateY(-2px); box-shadow:var(--shadow-lg); }
+.kpi-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:var(--text-light); margin-bottom:6px; }
+.kpi-value { font-family:var(--mono); font-size:22px; font-weight:500; line-height:1; margin-bottom:4px; }
+.kpi-sub { font-size:11px; color:var(--text-light); }
+.kpi-pct { display:inline-block; font-size:11px; font-weight:700; padding:2px 7px; border-radius:20px; margin-top:4px; }
+
+/* COMP GRID (resumen ejecutivo) */
+.comp-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:28px; }
+.comp-grid.single { grid-template-columns:1fr; }
+.comp-ips-box { background:#fff; border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow); }
+.comp-ips-header { padding:14px 20px; display:flex; justify-content:space-between; align-items:center; color:#fff; font-weight:700; font-size:15px; }
+.comp-kpi-grid { display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--border); }
+.comp-kpi { background:#fff; padding:16px 18px; }
+.comp-kpi-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--text-light); margin-bottom:5px; }
+.comp-kpi-value { font-family:var(--mono); font-size:20px; font-weight:500; line-height:1.1; margin-bottom:3px; }
+.comp-kpi-sub { font-size:11px; color:var(--text-light); }
+.comp-kpi.span2 { grid-column:span 2; }
+
+/* TABLE */
+.tbl-wrap { background:#fff; border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; margin-bottom:20px; }
+.tbl-head { padding:14px 20px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); }
+.tbl-title { font-size:14px; font-weight:700; color:var(--text-dark); }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+thead th { padding:9px 12px; text-align:right; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:var(--text-light); background:var(--surface); border-bottom:1px solid var(--border); white-space:nowrap; }
+thead th:first-child { text-align:left; }
+tbody tr { border-bottom:1px solid #f3f4f6; transition:.1s; }
+tbody tr:hover { background:#fafbfc; }
+tbody td { padding:9px 12px; text-align:right; }
+tbody td:first-child { text-align:left; font-weight:500; }
+tbody tr.subtotal td { background:#f9fafb; font-weight:700; border-top:2px solid var(--border); }
+tbody tr.total-row td { background:#f0f2f5; font-weight:700; border-top:2px solid #d1d5db; font-size:12px; }
+.mono { font-family:var(--mono); }
+.amount { font-family:var(--mono); text-align:right; }
+
+/* BADGE */
+.badge { display:inline-block; padding:2px 8px; border-radius:20px; font-size:10px; font-weight:700; }
+.badge-green { background:#dcfce7; color:#15803d; }
+.badge-amber { background:#fef3c7; color:#b45309; }
+.badge-purple { background:#f5f3ff; color:#6d28d9; }
+.badge-red { background:#fee2e2; color:#dc2626; }
+.badge-blue { background:#dbeafe; color:#1e40af; }
+
+/* CHARTS */
+.charts-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
+.chart-box { background:#fff; border-radius:var(--radius); padding:20px; box-shadow:var(--shadow); }
+.chart-title { font-size:13px; font-weight:700; color:var(--text-dark); margin-bottom:16px; }
+.chart-canvas-wrap { position:relative; height:220px; }
+
+/* FILTERS */
+.filter-bar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
+.fsel { height:34px; padding:0 12px; border:1.5px solid var(--border); border-radius:8px; font-family:'DM Sans',sans-serif; font-size:12px; color:var(--text-mid); background:#fff; outline:none; }
+.fsel:focus { border-color:var(--dolormed); }
+.fbtn { padding:7px 14px; border-radius:8px; border:1.5px solid var(--border); background:#fff; font-size:12px; font-weight:600; color:var(--text-mid); cursor:pointer; transition:.12s; }
+.fbtn:hover { background:var(--surface); }
+.fbtn.pri { background:var(--dolormed); color:#fff; border-color:var(--dolormed); }
+.fbtn.pri:hover { background:#1b4332; }
+
+/* ADMIN CARDS */
+.admin-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px; }
+.admin-card { background:#fff; border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow); }
+.admin-card-head { padding:14px 18px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); }
+.admin-card-title { font-size:14px; font-weight:700; }
+.admin-card-body { padding:18px; }
+
+/* TOAST */
+.toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px); background:#1f2937; color:#fff; padding:10px 20px; border-radius:10px; font-size:13px; font-weight:500; z-index:1000; transition:transform .3s ease; pointer-events:none; display:flex; align-items:center; gap:8px; }
+.toast.show { transform:translateX(-50%) translateY(0); }
+.toast-dot { width:7px; height:7px; border-radius:50%; background:#22c55e; flex-shrink:0; }
+.toast.err .toast-dot { background:#ef4444; }
+
+/* EMPTY */
+.empty { padding:60px 32px; text-align:center; color:var(--text-light); }
+.empty-icon { font-size:40px; opacity:.25; margin-bottom:12px; }
+.empty-txt { font-size:14px; font-weight:500; color:var(--text-mid); }
+.empty-sub { font-size:12px; margin-top:6px; }
+
+/* PROGRESS BAR */
+.pbar-wrap { margin-bottom:8px; }
+.pbar-label { display:flex; justify-content:space-between; margin-bottom:3px; }
+.pbar-label span { font-size:12px; color:var(--text-mid); }
+.pbar-label strong { font-family:var(--mono); font-size:12px; }
+.pbar { height:6px; background:#f3f4f6; border-radius:3px; overflow:hidden; }
+.pbar-fill { height:100%; border-radius:3px; transition:width .6s ease; }
+
+/* SPIN */
+@keyframes spin { to { transform:rotate(360deg); } }
+.spinner { width:36px; height:36px; border:3px solid var(--border); border-top-color:var(--dolormed); border-radius:50%; animation:spin .7s linear infinite; margin:0 auto 14px; }
+
+/* VIEWS */
+.view { display:none; }
+.view.active { display:block; }
+
+/* ======= COMPARATIVO HISTÓRICO ======= */
+.comp-hist-cols { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px; }
+.comp-hist-panel {
+  background:#fff; border-radius:var(--radius); overflow:hidden;
+  box-shadow:var(--shadow); border-top:4px solid #e5e7eb;
+}
+.comp-hist-panel.panel-a { border-top-color:#1d6ca8; }
+.comp-hist-panel.panel-b { border-top-color:#e5a800; }
+.comp-hist-panel-head {
+  padding:12px 18px; display:flex; justify-content:space-between; align-items:center;
+  border-bottom:1px solid var(--border);
+}
+.comp-hist-panel-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; }
+.panel-a .comp-hist-panel-label { color:#1d6ca8; }
+.panel-b .comp-hist-panel-label { color:#b45309; }
+.comp-hist-panel-cutoff { font-size:11px; color:var(--text-light); }
+.comp-hist-panel-body { padding:14px 18px; }
+.comp-hist-row {
+  display:grid; grid-template-columns:1fr 1fr 1fr; gap:0;
+  border-bottom:1px solid #f3f4f6; padding:8px 0;
+}
+.comp-hist-row:last-child { border-bottom:none; }
+.comp-hist-row .chr-label { font-size:11px; color:var(--text-light); grid-column:span 3; margin-bottom:3px; font-weight:600; text-transform:uppercase; letter-spacing:.4px; }
+.comp-hist-row .chr-val { font-family:var(--mono); font-size:13px; }
+.comp-delta {
+  background:#fff; border-radius:var(--radius); padding:16px 20px;
+  box-shadow:var(--shadow); margin-bottom:20px; border-left:4px solid #8b5cf6;
+}
+.comp-delta-title { font-size:13px; font-weight:700; color:var(--text-dark); margin-bottom:14px; }
+.comp-delta-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+.comp-delta-item { background:var(--surface); border-radius:8px; padding:12px 14px; }
+.comp-delta-item .cd-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--text-light); margin-bottom:4px; }
+.comp-delta-item .cd-val { font-family:var(--mono); font-size:16px; font-weight:500; }
+.comp-delta-item .cd-arrow { font-size:11px; font-weight:700; margin-top:2px; }
+.cd-up   { color:#dc2626; } /* glosa sube = malo */
+.cd-down { color:#15803d; } /* glosa baja = bueno */
+.cd-neu  { color:#6b7280; }
+.comp-hist-tbl-row-a td { background:#eff6ff33; }
+.comp-hist-tbl-row-b td { background:#fffbeb33; }
+.comp-hist-tbl-row-diff td { background:#faf5ff33; font-style:italic; }
+.comp-hist-snap-list { max-height:220px; overflow-y:auto; }
+.snap-item {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:9px 12px; border-bottom:1px solid var(--border);
+  cursor:pointer; transition:.1s; border-radius:6px; margin:2px 0;
+}
+.snap-item:hover { background:var(--surface); }
+.snap-item.selected-a { background:#dbeafe; border-color:#93c5fd; }
+.snap-item.selected-b { background:#fef3c7; border-color:#fcd34d; }
+.snap-item .si-cutoff { font-size:12px; font-weight:600; color:var(--text-dark); }
+.snap-item .si-saved  { font-size:11px; color:var(--text-light); }
+.snap-item .si-badge  { font-size:10px; font-weight:700; padding:2px 7px; border-radius:10px; }
+.si-badge-a { background:#dbeafe; color:#1d4ed8; }
+.si-badge-b { background:#fef3c7; color:#b45309; }
+.comp-locked-banner {
+  background:#fef9ec; border:1.5px solid #fcd34d; border-radius:var(--radius);
+  padding:20px 24px; text-align:center; margin-bottom:20px;
+}
+.comp-locked-banner .cl-icon { font-size:28px; margin-bottom:8px; }
+.comp-locked-banner .cl-title { font-size:15px; font-weight:700; color:#92400e; margin-bottom:4px; }
+.comp-locked-banner .cl-sub { font-size:12px; color:#b45309; }
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN ===== -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="44" height="44" rx="12" fill="#2d6a4f"/>
+        <path d="M10 32L18 14L24 26L28 20L34 32H10Z" fill="none" stroke="white" stroke-width="2.2" stroke-linejoin="round"/>
+        <circle cx="28" cy="14" r="3" fill="#52b788"/>
+      </svg>
+      <div class="brand">Informes Gerenciales</div>
+      <div class="sub">Sistema de Indicadores de Glosas</div>
+    </div>
+    <div class="login-title">Iniciar sesión</div>
+    <div class="login-desc">Ingrese sus credenciales para continuar</div>
+    <div class="lf"><label>Usuario</label><input type="text" id="login-user" placeholder="usuario" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div class="lf"><label>Contraseña</label><input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <button class="login-btn" id="login-btn" onclick="doLogin()">Ingresar</button>
+    <div class="login-error" id="login-error"></div>
+    <div class="login-footer">Grupo Empresarial · Control Interno</div>
+  </div>
+</div>
+
+<!-- ===== APP ===== -->
+<div id="app-shell" style="display:none;flex-direction:column;height:100vh;">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-brand">
+      <div class="logo-icon">
+        <svg viewBox="0 0 20 20"><path d="M2 16L7 6L11 12L14 8L18 16H2Z" fill="none" stroke="white" stroke-width="1.8" stroke-linejoin="round"/><circle cx="14" cy="5" r="2" fill="white"/></svg>
+      </div>
+      <div>
+        <div class="topbar-title">Indicadores de Glosas</div>
+        <div class="topbar-sub">Informe Gerencial · Control Interno</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-ips-badge" id="top-ips-badge">—</span>
+      <span class="topbar-cutoff" id="top-cutoff"></span>
+      <span class="topbar-user" id="top-user"></span>
+      <button class="btn-logout" onclick="doLogout()">🔒 Cerrar sesión</button>
+    </div>
+  </div>
+
+  <!-- BODY -->
+  <div class="app-body">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="sb-section">Informe por IPS</div>
+      <div class="sb-ips-card" id="sb-card-dolormed" onclick="selectIPS('dolormed')">
+        <div class="ips-name" style="color:var(--dolormed)"><span class="ips-dot" id="dot-dolormed"></span>Dolormed</div>
+        <div class="ips-cutoff" id="cutoff-dolormed">Sin datos</div>
+      </div>
+      <div class="sb-ips-card" id="sb-card-redesimat" onclick="selectIPS('redesimat')">
+        <div class="ips-name" style="color:var(--redesimat)"><span class="ips-dot" id="dot-redesimat"></span>Redes IMAT</div>
+        <div class="ips-cutoff" id="cutoff-redesimat">Sin datos</div>
+      </div>
+      <div class="sb-divider"></div>
+      <div class="sb-section">Navegación</div>
+      <div class="sb-item active" id="nav-resumen" onclick="showView('resumen')">
+        <svg class="sb-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M3 4h14v2H3V4zm0 5h14v2H3V9zm0 5h8v2H3v-2z"/></svg>
+        Resumen Ejecutivo
+      </div>
+      <div class="sb-item" id="nav-mensual" onclick="showView('mensual')">
+        <svg class="sb-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M2 11h16v2H2v-2zm0-4h16v2H2V7zm0 8h10v2H2v-2z"/></svg>
+        Detalle Mensual
+      </div>
+      <div class="sb-item" id="nav-entidades" onclick="showView('entidades')">
+        <svg class="sb-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a8 8 0 100 16A8 8 0 0010 2zm1 11H9V9h2v4zm0-6H9V5h2v2z"/></svg>
+        Glosa Viva x Entidad
+      </div>
+      <div class="sb-item" id="nav-tendencias" onclick="showView('tendencias')">
+        <svg class="sb-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M2 15l5-5 4 3 6-8" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+        Tendencias
+      </div>
+      <div class="sb-item" id="nav-comparativo" onclick="showView('comparativo')">
+        <svg class="sb-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M3 5h6v10H3V5zm8 0h6v10h-6V5z" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+        Comparativo Cortes
+      </div>
+      <div class="sb-divider"></div>
+      <div class="sb-section">Administración</div>
+      <div class="sb-item" id="nav-config" onclick="showView('config')">
+        <svg class="sb-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M10 12a2 2 0 100-4 2 2 0 000 4zm6.32-1.06a6 6 0 00.08-.94 6 6 0 00-.08-.94l2.03-1.58a.5.5 0 00.12-.63l-1.92-3.32a.5.5 0 00-.61-.22l-2.39.96a5.98 5.98 0 00-1.63-.94L11.26 2.1A.5.5 0 0010.77 2H7.23a.5.5 0 00-.49.41L6.38 4.73a5.98 5.98 0 00-1.63.94L2.36 4.7a.5.5 0 00-.61.22L.83 8.24a.5.5 0 00.12.63l2.03 1.58a6 6 0 000 1.88l-2.03 1.58a.5.5 0 00-.12.63l1.92 3.32a.5.5 0 00.61.22l2.39-.96c.5.36 1.05.66 1.63.94l.36 2.63a.5.5 0 00.49.41h3.54a.5.5 0 00.49-.41l.36-2.63c.58-.28 1.12-.58 1.63-.94l2.39.96a.5.5 0 00.61-.22l1.92-3.32a.5.5 0 00-.12-.63l-2.03-1.58z"/></svg>
+        Configuración
+      </div>
+    </div>
+
+    <!-- MAIN -->
+    <div class="main-content" id="main-content">
+      <!-- RESUMEN VIEW -->
+      <div class="view active" id="view-resumen">
+        <div id="resumen-body">
+          <div class="empty">
+            <div class="empty-icon">📊</div>
+            <div class="empty-txt">Bienvenido al Sistema de Indicadores de Glosas</div>
+            <div class="empty-sub">Cargue un archivo Excel desde Configuración o seleccione una IPS para ver el informe.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MENSUAL VIEW -->
+      <div class="view" id="view-mensual">
+        <div id="mensual-body">
+          <div class="empty"><div class="empty-icon">📅</div><div class="empty-txt">Sin datos cargados</div></div>
+        </div>
+      </div>
+
+      <!-- ENTIDADES VIEW -->
+      <div class="view" id="view-entidades">
+        <div id="entidades-body">
+          <div class="empty"><div class="empty-icon">🏢</div><div class="empty-txt">Sin datos cargados</div></div>
+        </div>
+      </div>
+
+      <!-- TENDENCIAS VIEW -->
+      <div class="view" id="view-tendencias">
+        <div id="tendencias-body">
+          <div class="empty"><div class="empty-icon">📈</div><div class="empty-txt">Sin datos cargados</div></div>
+        </div>
+      </div>
+
+      <!-- COMPARATIVO HISTÓRICO VIEW -->
+      <div class="view" id="view-comparativo">
+        <div id="comparativo-body">
+          <div class="empty"><div class="empty-icon">⚖️</div><div class="empty-txt">Sin datos cargados</div></div>
+        </div>
+      </div>
+
+      <!-- CONFIG VIEW -->
+      <div class="view" id="view-config">
+        <div class="section-title">Configuración</div>
+        <div class="section-sub">Cargue los archivos de glosas para cada IPS. El archivo debe tener dos hojas: "9. Informe % Glosas" y "9.1 Glosa viva x entidad".</div>
+        <div class="admin-grid" id="config-body"></div>
+        <div id="users-section" style="display:none">
+          <div class="section-title" style="margin-top:8px">Gestión de usuarios</div>
+          <div class="section-sub" style="margin-bottom:16px">Solo visible para administradores.</div>
+          <div class="tbl-wrap">
+            <div class="tbl-head">
+              <div class="tbl-title">Usuarios del sistema</div>
+              <button class="fbtn pri" onclick="showAddUser()">+ Nuevo usuario</button>
+            </div>
+            <div id="add-user-form" style="display:none;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--surface)">
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">
+                <div><label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">Nombre</label><input type="text" id="nu-nombre" placeholder="Ej: Coordinador Glosas" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif"></div>
+                <div><label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">Usuario</label><input type="text" id="nu-user" placeholder="Ej: coord_dolormed" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif"></div>
+                <div><label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">Contraseña</label><input type="password" id="nu-pass" placeholder="Mín. 4 caracteres" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif"></div>
+              </div>
+              <div style="display:flex;gap:8px">
+                <button class="fbtn pri" onclick="crearUsuario()">Guardar</button>
+                <button class="fbtn" onclick="document.getElementById('add-user-form').style.display='none'">Cancelar</button>
+              </div>
+            </div>
+            <div id="lista-usuarios"><div class="empty"><div class="empty-txt">Cargando usuarios...</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"><span class="toast-dot" id="tdot"></span><span id="tmsg"></span></div>
+
+<script>
+// ═══════════════════════════════════════════════
+// SUPABASE CONFIG (misma instancia del ecosistema)
+// ═══════════════════════════════════════════════
+const SB = 'https://qzpgqmcnluperbivnpku.supabase.co';
+const SK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF6cGdxbWNubHVwZXJiaXZucGt1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5MjQ4NDUsImV4cCI6MjA5NDUwMDg0NX0.V0KnX_v2n2VcDWdNYmowo4Xmg_fGNQ1xL5u6tYGl9Tc';
+const H = { 'Content-Type':'application/json', 'apikey':SK, 'Authorization':'Bearer '+SK, 'Prefer':'return=representation' };
+const H_MIN = { 'Content-Type':'application/json', 'apikey':SK, 'Authorization':'Bearer '+SK, 'Prefer':'return=minimal' };
+
+async function sbG(t, q='') {
+  const r = await fetch(SB+'/rest/v1/'+t+'?'+q, { headers:{ 'apikey':SK,'Authorization':'Bearer '+SK,'Accept':'application/json' } });
+  if (!r.ok) throw new Error(await r.text());
+  const x = await r.text(); return x ? JSON.parse(x) : [];
+}
+async function sbU(t, body, conflict='') {
+  const qs = conflict ? '?on_conflict='+conflict+'&resolution=merge-duplicates' : '';
+  const r = await fetch(SB+'/rest/v1/'+t+qs, { method:'POST', headers:Object.assign({},H,{'Prefer':'resolution=merge-duplicates,return=minimal'}), body:JSON.stringify(body) });
+  if (!r.ok) throw new Error(await r.text());
+}
+async function sbP(t, q, body) {
+  const r = await fetch(SB+'/rest/v1/'+t+'?'+q, { method:'PATCH', headers:H_MIN, body:JSON.stringify(body) });
+  if (!r.ok) throw new Error(await r.text());
+}
+
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+let SESSION_USER = null;
+const SISTEMA = 'glosas';
+
+// Tabla Supabase para snapshots: glosas_snapshots (ips_id TEXT PK, data JSONB, updated_at TIMESTAMPTZ)
+const SNAP_TABLE = 'glosas_snapshots';
+
+const ipsStore = {
+  dolormed:  { data:null, cutoff:null, loadedAt:null, name:'Clínica Dolormed', color:getComputedStyle(document.documentElement).getPropertyValue('--dolormed').trim() || '#2d6a4f', light:'#d8f3dc' },
+  redesimat: { data:null, cutoff:null, loadedAt:null, name:'Clínica Redes IMAT', color:'#1d3557', light:'#cce5f5' }
+};
+let selectedIPS = null;
+let chartRad = null, chartGlosa = null, chartEnt = null, chartAnual = null;
+const MESES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+
+// ── Estado comparativo histórico ──
+// Tabla adicional: glosas_historial (id SERIAL PK, ips_id TEXT, cutoff_str TEXT, saved_at TIMESTAMPTZ, data JSONB)
+const HIST_TABLE = 'glosas_historial';
+const COMP_STATE = { ipsId:null, snapA:null, snapB:null, allSnaps:[], yearFilter:null };
+// rol requerido para usar comparativos: 'admin' o 'gerencia'
+const COMP_ROLES_ALLOWED = ['admin','gerencia'];
+
+// ═══════════════════════════════════════════════
+// FORMAT
+// ═══════════════════════════════════════════════
+function fmtCOP(v) {
+  if (!v || isNaN(v)) return '$ 0';
+  return '$ ' + Math.round(v).toLocaleString('es-CO');
+}
+function fmtPct(v) {
+  if (!v || isNaN(v)) return '0%';
+  return (v*100).toFixed(1) + '%';
+}
+function fmt0(v) { return Math.round(v||0).toLocaleString('es-CO'); }
+
+// ═══════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════
+async function doLogin() {
+  const user = (document.getElementById('login-user').value||'').trim().toLowerCase();
+  const pass = document.getElementById('login-pass').value;
+  const btn = document.getElementById('login-btn');
+  const err = document.getElementById('login-error');
+  err.style.display = 'none';
+  if (!user || !pass) { err.textContent = 'Complete usuario y contraseña.'; err.style.display = 'block'; return; }
+  btn.textContent = 'Verificando...'; btn.disabled = true;
+  try {
+    const rows = await sbG('usuarios', 'usuario=eq.'+encodeURIComponent(user)+'&activo=eq.true&select=id,nombre,usuario,clave,rol');
+    const match = rows.find(r => r.clave === pass);
+    try { await sbU('accesos_log', [{ usuario:user, exitoso:!!match, sistema:SISTEMA }]); } catch(e){}
+    if (match) {
+      SESSION_USER = { id:match.id, nombre:match.nombre, usuario:match.usuario, rol:match.rol||'viewer' };
+      sessionStorage.setItem('glosas_session', JSON.stringify(SESSION_USER));
+      initApp();
+    } else {
+      err.textContent = 'Usuario o contraseña incorrectos.';
+      err.style.display = 'block';
+      document.getElementById('login-pass').value = '';
+    }
+  } catch(e) {
+    err.textContent = 'Error de conexión: ' + e.message;
+    err.style.display = 'block';
+  } finally { btn.textContent = 'Ingresar'; btn.disabled = false; }
+}
+
+function doLogout() {
+  SESSION_USER = null;
+  sessionStorage.removeItem('glosas_session');
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app-shell').style.display = 'none';
+  document.getElementById('login-user').value = '';
+  document.getElementById('login-pass').value = '';
+}
+
+function checkSession() {
+  try {
+    const s = sessionStorage.getItem('glosas_session');
+    if (s) { SESSION_USER = JSON.parse(s); return true; }
+  } catch(e) {}
+  return false;
+}
+
+async function initApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-shell').style.display = 'flex';
+  document.getElementById('top-user').textContent = '👤 ' + SESSION_USER.nombre;
+  // Visibilidad nav comparativo: solo admin y gerencia
+  const navComp = document.getElementById('nav-comparativo');
+  if (navComp) navComp.style.display = canUseComparativo() ? 'flex' : 'none';
+  // Admin-only sections
+  if (SESSION_USER.rol === 'admin') {
+    document.getElementById('users-section').style.display = 'block';
+    cargarUsuarios();
+  }
+  buildConfigUI();
+  await loadAllFromSupabase();
+}
+
+// ═══════════════════════════════════════════════
+// SUPABASE SNAPSHOT I/O
+// ═══════════════════════════════════════════════
+async function saveToSupabase(ipsId, data) {
+  try {
+    await sbU(SNAP_TABLE, [{ ips_id:ipsId, data:data, updated_at:new Date().toISOString() }], 'ips_id');
+    toast('✓ Guardado en la nube · ' + ipsStore[ipsId].name);
+  } catch(e) { toast('⚠ Sin conexión — datos solo en dispositivo', true); }
+}
+
+// Guarda cada cargue como entrada inmutable en el historial de cortes
+async function saveToHistorial(ipsId, data) {
+  try {
+    // Evitar duplicado exacto del mismo corte para la misma IPS
+    const existing = await sbG(HIST_TABLE,
+      'ips_id=eq.'+ipsId+'&cutoff_str=eq.'+encodeURIComponent(data.cutoffStr)+'&select=id');
+    if (existing && existing.length > 0) {
+      // Actualizar el existente en lugar de duplicar
+      await sbP(HIST_TABLE,
+        'ips_id=eq.'+ipsId+'&cutoff_str=eq.'+encodeURIComponent(data.cutoffStr),
+        { data: data, saved_at: new Date().toISOString() });
+      return;
+    }
+    // Insertar nuevo registro histórico
+    const r = await fetch(SB+'/rest/v1/'+HIST_TABLE, {
+      method:'POST',
+      headers: Object.assign({},H,{'Prefer':'return=minimal'}),
+      body: JSON.stringify({ ips_id:ipsId, cutoff_str:data.cutoffStr, saved_at:new Date().toISOString(), data:data })
+    });
+    if (!r.ok) { const t=await r.text(); console.warn('Historial save:', t); }
+  } catch(e) { console.warn('saveToHistorial:', e.message); }
+}
+
+// Carga todos los snapshots históricos de una IPS ordenados por fecha de corte
+async function loadHistorial(ipsId) {
+  try {
+    const rows = await sbG(HIST_TABLE,
+      'ips_id=eq.'+ipsId+'&order=saved_at.desc&select=id,cutoff_str,saved_at,data');
+    return rows || [];
+  } catch(e) { console.warn('loadHistorial:', e.message); return []; }
+}
+
+async function loadFromSupabase(ipsId) {
+  try {
+    const rows = await sbG(SNAP_TABLE, 'ips_id=eq.'+ipsId+'&select=data,updated_at');
+    if (!rows || !rows.length) return null;
+    return { snap: rows[0].data, updatedAt: rows[0].updated_at };
+  } catch(e) { return null; }
+}
+
+async function loadAllFromSupabase() {
+  for (const ipsId of ['dolormed','redesimat']) {
+    const res = await loadFromSupabase(ipsId);
+    if (res && res.snap) {
+      ipsStore[ipsId].data = res.snap;
+      ipsStore[ipsId].cutoff = res.snap.cutoffStr || '—';
+      ipsStore[ipsId].loadedAt = new Date(res.updatedAt).toLocaleString('es-CO') + ' (nube)';
+      updateSBCard(ipsId);
+    }
+  }
+  // Auto-select first loaded IPS
+  const first = ['dolormed','redesimat'].find(id => ipsStore[id].data);
+  if (first) { selectedIPS = first; renderAll(); updateTopBar(first); }
+  buildConfigUI(); // refresh config cards with loaded state
+}
+
+function updateSBCard(ipsId) {
+  const dot = document.getElementById('dot-'+ipsId);
+  const cutoffEl = document.getElementById('cutoff-'+ipsId);
+  if (dot) dot.className = 'ips-dot ok';
+  if (cutoffEl) cutoffEl.textContent = 'Corte: ' + (ipsStore[ipsId].cutoff||'—');
+}
+
+// ═══════════════════════════════════════════════
+// EXCEL PROCESSING — HOJA 1
+// ═══════════════════════════════════════════════
+function processSheet1(rows) {
+  // Detectar fecha corte (fila 2, col B)
+  let cutoffStr = '—';
+  if (rows.length > 1) {
+    const fila2 = rows[1];
+    const v = Object.values(fila2)[1];
+    if (v instanceof Date) cutoffStr = v.toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'});
+    else if (typeof v === 'string' || typeof v === 'number') {
+      try { const d = new Date(v); if (!isNaN(d)) cutoffStr = d.toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'}); } catch(e){}
+    }
+  }
+  // Detectar fila de cabeceras (buscar "AÑO" en col 0)
+  let headerRow = -1;
+  for (let i=0; i<rows.length; i++) {
+    const vals = Object.values(rows[i]);
+    if (vals[0] && String(vals[0]).toUpperCase().includes('AÑO')) { headerRow = i; break; }
+  }
+  if (headerRow < 0) return { cutoffStr, byYear:{}, byYearMes:{} };
+
+  const byYear = {}, byYearMes = {};
+  let currentYear = null;
+
+  for (let i = headerRow+1; i < rows.length; i++) {
+    const cols = Object.values(rows[i]);
+    if (cols.every(v => v === null || v === undefined)) continue;
+
+    // Check if it's a year row
+    if (typeof cols[0] === 'number' && cols[0] > 2000 && cols[0] < 2100) currentYear = cols[0];
+    const mes = cols[1] ? String(cols[1]).toUpperCase().trim() : null;
+    if (!mes || !MESES.includes(mes)) continue; // skip subtotals
+    if (!currentYear) continue;
+
+    const key = currentYear + '-' + String(MESES.indexOf(mes)+1).padStart(2,'0');
+    const row = {
+      anio: currentYear, mes, mesIdx: MESES.indexOf(mes),
+      cuentasRad: parseFloat(cols[2])||0,
+      valRad:     parseFloat(cols[3])||0,
+      cuentasGlos: parseFloat(cols[4])||0,
+      variacion:  parseFloat(cols[5])||0,
+      valGlosa:   parseFloat(cols[6])||0,
+      pctGlosaCant: parseFloat(cols[7])||0,
+      pctGlosaVal: parseFloat(cols[8])||0,
+      aceptadoCant: parseFloat(cols[9])||0,
+      aceptadoVal:  parseFloat(cols[10])||0,
+      pctAcept:    parseFloat(cols[11])||0,
+      valNoRec:   parseFloat(cols[12])||0,
+      pctNoRec:   parseFloat(cols[13])||0,
+    };
+    byYearMes[key] = row;
+    if (!byYear[currentYear]) byYear[currentYear] = { anio:currentYear, rows:[], totRad:0, totGlosa:0, totAcept:0, totNoRec:0, totCuentas:0 };
+    const y = byYear[currentYear];
+    y.rows.push(row);
+    y.totRad   += row.valRad;
+    y.totGlosa += row.valGlosa;
+    y.totAcept += row.aceptadoVal;
+    y.totNoRec += row.valNoRec;
+    y.totCuentas += row.cuentasRad;
+  }
+  // Compute annual averages
+  Object.values(byYear).forEach(y => {
+    const n = y.rows.length || 1;
+    y.promPctGlosa = y.rows.reduce((s,r)=>s+r.pctGlosaVal,0)/n;
+    y.promPctNoRec = y.rows.reduce((s,r)=>s+r.pctNoRec,0)/n;
+    y.pctGlosaAnual = y.totRad > 0 ? y.totGlosa/y.totRad : 0;
+    y.pctNoRecAnual = y.totRad > 0 ? y.totNoRec/y.totRad : 0;
+  });
+  return { cutoffStr, byYear, byYearMes };
+}
+
+// ═══════════════════════════════════════════════
+// EXCEL PROCESSING — HOJA 2
+// ═══════════════════════════════════════════════
+function processSheet2(rows) {
+  // Structure: blocks by year, header in fila with "ENTIDAD"
+  const byYearEnt = {}; // { 2023: { entidad: { mes: { cant, valor, pct } } } }
+  let currentYear = null;
+  let inBlock = false;
+  let mesHeaders = [];
+
+  for (let i=0; i<rows.length; i++) {
+    const cols = Object.values(rows[i]);
+    // Detect year (col B = index 1)
+    const possibleYear = cols[1];
+    if (typeof possibleYear === 'number' && possibleYear > 2015 && possibleYear < 2100) {
+      currentYear = possibleYear;
+    }
+    // Detect header row
+    if (cols[2] && String(cols[2]).toUpperCase().trim() === 'ENTIDAD') {
+      inBlock = true;
+      // Read month headers from remaining cols: pattern ENERO, GLOSA VIVA, %, FEBRERO...
+      mesHeaders = [];
+      for (let c=3; c<cols.length; c+=3) {
+        const m = cols[c];
+        if (m && MESES.includes(String(m).toUpperCase().trim())) {
+          mesHeaders.push({ mes: String(m).toUpperCase().trim(), c });
+        } else if (m && String(m).toUpperCase().includes('TOTAL')) {
+          mesHeaders.push({ mes:'TOTAL', c }); break;
+        }
+      }
+      continue;
+    }
+    if (!inBlock || !currentYear) continue;
+    // Check if it's a total row (col 2 is null/empty = subtotal row)
+    const entidad = cols[2] ? String(cols[2]).trim() : null;
+    if (!entidad || entidad === '' || entidad === 'ENTIDAD') continue;
+
+    if (!byYearEnt[currentYear]) byYearEnt[currentYear] = {};
+    if (!byYearEnt[currentYear][entidad]) byYearEnt[currentYear][entidad] = {};
+
+    mesHeaders.forEach(({ mes, c }) => {
+      if (mes === 'TOTAL') {
+        byYearEnt[currentYear][entidad]['TOTAL'] = {
+          cant: parseFloat(cols[c])||0,
+          valor: parseFloat(cols[c+1])||0,
+          pct:  parseFloat(cols[c+2])||0
+        };
+      } else {
+        byYearEnt[currentYear][entidad][mes] = {
+          cant:  parseFloat(cols[c])||0,
+          valor: parseFloat(cols[c+1])||0,
+          pct:   parseFloat(cols[c+2])||0
+        };
+      }
+    });
+  }
+  return { byYearEnt };
+}
+
+// ═══════════════════════════════════════════════
+// VALIDACIÓN CRUZADA HOJAS 1 vs 2 (MALLA BLOQUEANTE)
+// ═══════════════════════════════════════════════
+// Regla: la suma de "GLOSA VIVA" por entidad en H2 para cada mes/año
+// debe ser EXACTAMENTE igual al campo valGlosa (col G) de H1.
+// Tolerancia: ±1 peso por redondeos de decimales en Excel.
+function validateCrossSheet(sheet1, sheet2) {
+  const TOLERANCIA = 1; // peso
+  const errores = [];
+
+  // Iterar todos los años con datos en H1
+  for (const [yearStr, yData] of Object.entries(sheet1.byYear)) {
+    const year = parseInt(yearStr);
+    const h2year = sheet2.byYearEnt[year];
+
+    // Si H2 no tiene ese año y H1 tiene glosa > 0 → error
+    const h1totAnio = yData.totGlosa || 0;
+    if (!h2year && h1totAnio > 0) {
+      errores.push({
+        tipo: 'AÑO_FALTANTE',
+        anio: year,
+        mes: null,
+        h1: h1totAnio,
+        h2: 0,
+        diff: h1totAnio
+      });
+      continue;
+    }
+    if (!h2year) continue;
+
+    // Verificar por mes
+    for (const row of yData.rows) {
+      const mes = row.mes;
+      const h1val = row.valGlosa || 0;
+
+      // Sumar col "GLOSA VIVA" (valor) de todas las entidades para ese mes
+      let h2val = 0;
+      for (const [ent, meses] of Object.entries(h2year)) {
+        const mData = meses[mes];
+        if (mData) h2val += mData.valor || 0;
+      }
+
+      const diff = Math.abs(h2val - h1val);
+      if (diff > TOLERANCIA) {
+        errores.push({
+          tipo: 'DIFERENCIA_MES',
+          anio: year,
+          mes,
+          h1: h1val,
+          h2: h2val,
+          diff: h2val - h1val
+        });
+      }
+    }
+  }
+
+  return errores;
+}
+
+function renderValidationError(errores, ipsId) {
+  const ips = ipsStore[ipsId];
+  const btn = document.getElementById('btn-'+ipsId);
+  if (btn) { btn.textContent = 'Actualizar'; btn.disabled = false; }
+
+  // Construir tabla de diferencias
+  const filas = errores.map(e => {
+    const diffStr = e.diff >= 0 ? '+$ '+Math.round(e.diff).toLocaleString('es-CO') : '-$ '+Math.round(Math.abs(e.diff)).toLocaleString('es-CO');
+    const tipo = e.tipo === 'AÑO_FALTANTE' ? 'Año sin datos en H2' : 'Diferencia por mes';
+    return \`<tr>
+      <td style="padding:7px 12px;font-weight:600">\${e.anio}</td>
+      <td style="padding:7px 12px">\${e.mes || '(total año)'}</td>
+      <td style="padding:7px 12px;font-family:'DM Mono',monospace;text-align:right">$ \${Math.round(e.h1).toLocaleString('es-CO')}</td>
+      <td style="padding:7px 12px;font-family:'DM Mono',monospace;text-align:right">$ \${Math.round(e.h2).toLocaleString('es-CO')}</td>
+      <td style="padding:7px 12px;font-family:'DM Mono',monospace;text-align:right;font-weight:700;color:#dc2626">\${diffStr}</td>
+      <td style="padding:7px 12px;font-size:11px;color:#7f1d1d">\${tipo}</td>
+    </tr>\`;
+  }).join('');
+
+  const modal = document.createElement('div');
+  modal.id = 'validation-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  modal.innerHTML = \`
+  <div style="background:#fff;border-radius:16px;width:min(820px,95vw);max-height:85vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.35)">
+    <div style="background:#dc2626;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <div>
+        <div style="color:#fff;font-size:16px;font-weight:700">🚫 Cargue bloqueado — Malla de validación fallida</div>
+        <div style="color:#fecaca;font-size:12px;margin-top:3px">\${ips.name} · \${errores.length} diferencia(s) detectada(s) entre Hoja 1 y Hoja 2</div>
+      </div>
+    </div>
+    <div style="padding:20px 24px;overflow-y:auto;flex:1">
+      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:14px 18px;margin-bottom:18px">
+        <div style="font-size:13px;font-weight:700;color:#7f1d1d;margin-bottom:6px">Condición obligatoria no cumplida</div>
+        <div style="font-size:12px;color:#991b1b;line-height:1.7">
+          La suma de <strong>Glosa (col. G — Hoja 1)</strong> de cada mes debe ser <strong>exactamente igual</strong>
+          a la suma de <strong>Glosa Viva por entidad (Hoja 2)</strong> para el mismo mes y año.<br>
+          Corrija las diferencias en el archivo Excel y vuelva a cargarlo.
+        </div>
+      </div>
+      <div style="font-size:13px;font-weight:700;color:var(--text-dark);margin-bottom:10px">Detalle de diferencias</div>
+      <div style="overflow-x:auto;border-radius:8px;border:1px solid var(--border)">
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead>
+            <tr style="background:#f9fafb">
+              <th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text-light);border-bottom:1px solid var(--border)">AÑO</th>
+              <th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text-light);border-bottom:1px solid var(--border)">MES</th>
+              <th style="padding:8px 12px;text-align:right;font-size:11px;color:#1d6ca8;border-bottom:1px solid var(--border)">GLOSA H1 (col G)</th>
+              <th style="padding:8px 12px;text-align:right;font-size:11px;color:#6d28d9;border-bottom:1px solid var(--border)">SUMA H2 (entidades)</th>
+              <th style="padding:8px 12px;text-align:right;font-size:11px;color:#dc2626;border-bottom:1px solid var(--border)">DIFERENCIA</th>
+              <th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text-light);border-bottom:1px solid var(--border)">TIPO</th>
+            </tr>
+          </thead>
+          <tbody>\${filas}</tbody>
+        </table>
+      </div>
+    </div>
+    <div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;background:#fafafa">
+      <div style="font-size:12px;color:var(--text-light)">El cargue NO fue registrado. Corrija el Excel y vuelva a intentarlo.</div>
+      <button onclick="document.getElementById('validation-modal').remove()"
+        style="padding:9px 20px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">
+        Entendido — Cerrar
+      </button>
+    </div>
+  </div>\`;
+  document.body.appendChild(modal);
+}
+
+// ═══════════════════════════════════════════════
+// FILE LOAD
+// ═══════════════════════════════════════════════
+window.doLoad = async function(ipsId) {
+  const fileInput = document.getElementById('file-'+ipsId);
+  const cutoffInput = document.getElementById('cutoff-'+ipsId);
+  if (!fileInput || !fileInput.files || !fileInput.files[0]) { toast('Seleccione un archivo Excel primero.', true); return; }
+  const btn = document.getElementById('btn-'+ipsId);
+  if (btn) { btn.textContent = 'Procesando...'; btn.disabled = true; }
+
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type:'array', cellDates:true });
+      if (wb.SheetNames.length < 2) throw new Error('El archivo debe tener al menos 2 hojas.');
+      const ws1 = wb.Sheets[wb.SheetNames[0]];
+      const ws2 = wb.Sheets[wb.SheetNames[1]];
+      const rows1 = XLSX.utils.sheet_to_json(ws1, { header:1, defval:null, raw:false });
+      const rows2 = XLSX.utils.sheet_to_json(ws2, { header:1, defval:null, raw:false });
+
+      // Convert to object rows for compatibility
+      const objRows1 = rows1.map(r => { const o={}; r.forEach((v,i)=>o[i]=v); return o; });
+      const objRows2 = rows2.map(r => { const o={}; r.forEach((v,i)=>o[i]=v); return o; });
+
+      const sheet1 = processSheet1(objRows1);
+      const sheet2 = processSheet2(objRows2);
+
+      // ── MALLA DE VALIDACIÓN CRUZADA (bloqueante) ──
+      const erroresValidacion = validateCrossSheet(sheet1, sheet2);
+      if (erroresValidacion.length > 0) {
+        renderValidationError(erroresValidacion, ipsId);
+        return; // detener cargue
+      }
+
+      // Override cutoff if manual date entered
+      const manualCutoff = cutoffInput && cutoffInput.value;
+      if (manualCutoff) {
+        const d = new Date(manualCutoff+'T12:00:00');
+        sheet1.cutoffStr = d.toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'});
+      }
+
+      const snapshot = {
+        ipsId, cutoffStr: sheet1.cutoffStr, savedAt: new Date().toISOString(),
+        byYear: sheet1.byYear, byYearMes: sheet1.byYearMes,
+        byYearEnt: sheet2.byYearEnt,
+        years: Object.keys(sheet1.byYear).map(Number).sort()
+      };
+
+      ipsStore[ipsId].data = snapshot;
+      ipsStore[ipsId].cutoff = snapshot.cutoffStr;
+      ipsStore[ipsId].loadedAt = new Date().toLocaleString('es-CO');
+      updateSBCard(ipsId);
+
+      await saveToSupabase(ipsId, snapshot);
+      await saveToHistorial(ipsId, snapshot); // registro inmutable para comparativos
+      selectedIPS = ipsId;
+      renderAll();
+      updateTopBar(ipsId);
+      showView('resumen');
+      buildConfigUI();
+    } catch(err) {
+      toast('Error: ' + err.message, true);
+    } finally {
+      if (btn) { btn.textContent = 'Actualizar'; btn.disabled = false; }
+    }
+  };
+  reader.readAsArrayBuffer(fileInput.files[0]);
+};
+
+// ═══════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('active'));
+  const v = document.getElementById('view-'+name);
+  const n = document.getElementById('nav-'+name);
+  if (v) v.classList.add('active');
+  if (n) n.classList.add('active');
+  if (name !== 'config') {
+    if (name === 'entidades')    renderEntidades();
+    if (name === 'tendencias')   renderTendencias();
+    if (name === 'mensual')      renderMensual();
+    if (name === 'comparativo')  renderComparativo();
+  }
+}
+
+function selectIPS(ipsId) {
+  if (!ipsStore[ipsId].data) { toast('Sin datos para '+ipsStore[ipsId].name+'. Cargue el Excel primero.', true); return; }
+  selectedIPS = ipsId;
+  renderAll();
+  updateTopBar(ipsId);
+}
+
+function updateTopBar(ipsId) {
+  const s = ipsStore[ipsId];
+  const badge = document.getElementById('top-ips-badge');
+  const cutoff = document.getElementById('top-cutoff');
+  badge.textContent = s.name.replace('Clínica ','');
+  if (ipsId === 'dolormed') { badge.style.background=s.light; badge.style.color=s.color; }
+  else { badge.style.background='#cce5f5'; badge.style.color='#1d3557'; }
+  if (cutoff) cutoff.textContent = 'Corte: ' + (s.cutoff||'—');
+  document.getElementById('sb-card-dolormed').classList.toggle('active', ipsId==='dolormed');
+  document.getElementById('sb-card-redesimat').classList.toggle('active', ipsId==='redesimat');
+}
+
+// ═══════════════════════════════════════════════
+// RENDER — RESUMEN EJECUTIVO
+// ═══════════════════════════════════════════════
+function renderAll() {
+  renderResumen();
+  const activeView = document.querySelector('.view.active');
+  if (activeView) {
+    const id = activeView.id.replace('view-','');
+    if (id === 'mensual') renderMensual();
+    if (id === 'entidades') renderEntidades();
+    if (id === 'tendencias') renderTendencias();
+  }
+}
+
+function renderResumen() {
+  const body = document.getElementById('resumen-body');
+  const data = selectedIPS ? ipsStore[selectedIPS].data : null;
+  if (!data) { body.innerHTML = '<div class="empty"><div class="empty-icon">📊</div><div class="empty-txt">Seleccione una IPS y cargue datos.</div></div>'; return; }
+
+  const years = data.years || [];
+  const ips = ipsStore[selectedIPS];
+
+  // Grand totals
+  let totRad=0, totGlosa=0, totAcept=0, totNoRec=0, totCuentas=0;
+  Object.values(data.byYear||{}).forEach(y => {
+    totRad    += y.totRad||0;
+    totGlosa  += y.totGlosa||0;
+    totAcept  += y.totAcept||0;
+    totNoRec  += y.totNoRec||0;
+    totCuentas+= y.totCuentas||0;
+  });
+  const pctGlosa  = totRad>0 ? totGlosa/totRad : 0;
+  const pctNoRec  = totRad>0 ? totNoRec/totRad : 0;
+  const pctAcept  = totGlosa>0 ? totAcept/totGlosa : 0;
+  const glosaNeta = Math.max(0, totGlosa - totAcept);
+
+  // Current year
+  const curYear = years[years.length-1];
+  const curY = data.byYear[curYear] || {};
+  const prevYear = years[years.length-2];
+  const prevY = prevYear ? data.byYear[prevYear] : null;
+
+  const colorMain = ips.color || '#2d6a4f';
+  const colorLight = ips.light || '#d8f3dc';
+
+  let html = '';
+
+  // ── KPI HEADER ──
+  html += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+    <div>
+      <div class="section-title">Resumen Ejecutivo</div>
+      <div class="section-sub">Indicadores clave de glosas · ${ips.name} · Corte: ${data.cutoffStr}</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <select class="fsel" id="ips-selector" onchange="selectIPS(this.value)">
+        <option value="dolormed" ${selectedIPS==='dolormed'?'selected':''}>Clínica Dolormed</option>
+        <option value="redesimat" ${selectedIPS==='redesimat'?'selected':''}>Clínica Redes IMAT</option>
+      </select>
+    </div>
+  </div>`;
+
+  // ── MAIN KPI CARDS ──
+  html += `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px">`;
+
+  function kpiCard(label, value, sub, borderColor, valueColor) {
+    return `<div class="kpi-card" style="border-top-color:${borderColor}">
+      <div class="kpi-label">${label}</div>
+      <div class="kpi-value" style="color:${valueColor||'var(--text-dark)'}">${value}</div>
+      <div class="kpi-sub">${sub}</div>
+    </div>`;
+  }
+
+  html += kpiCard('Total Radicado', fmtCOP(totRad), 'Desde '+(years[0]||'—'), colorMain, 'var(--text-dark)');
+  html += kpiCard('Total Glosa Inicial', fmtCOP(totGlosa), fmtPct(pctGlosa)+' del radicado', 'var(--c-glosa-ini)', 'var(--c-glosa-ini)');
+  html += kpiCard('Glosa Viva (Neta)', fmtCOP(glosaNeta), fmtPct(glosaNeta/totRad)+' del radicado · sin aceptar', 'var(--c-glosa-viva)', 'var(--c-glosa-viva)');
+  html += kpiCard('NC / Recuperado', fmtCOP(totAcept), fmtPct(pctAcept)+' de la glosa recuperado', 'var(--c-pago-ini)', 'var(--c-pago-ini)');
+  html += `</div>`;
+
+  // ── SECONDARY KPI ROW ──
+  html += `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px">`;
+  html += kpiCard('Total Cuentas', fmt0(totCuentas), 'Cuentas radicadas acumuladas', '#6b7280', 'var(--text-dark)');
+  html += kpiCard('% Glosa Prom.', fmtPct(pctGlosa), 'Glosa inicial / radicado total', 'var(--c-glosa-ini)', 'var(--c-glosa-ini)');
+  html += kpiCard('% No Recuperado', fmtPct(pctNoRec), 'Valor no recuperado / radicado', 'var(--c-nc)', 'var(--c-nc)');
+  html += kpiCard('Años con datos', years.length+'', (years[0]||'—')+' – '+(curYear||'—'), colorMain, 'var(--text-dark)');
+  html += `</div>`;
+
+  // ── AÑO ACTUAL vs ANTERIOR ──
+  if (curY && curY.totRad > 0) {
+    const pctCurGlosa = curY.totRad > 0 ? curY.totGlosa/curY.totRad : 0;
+    const pctCurNoRec = curY.totRad > 0 ? curY.totNoRec/curY.totRad : 0;
+    const glosaNeta_cur = Math.max(0, curY.totGlosa - curY.totAcept);
+
+    html += `<div style="background:#fff;border-radius:var(--radius);padding:20px 24px;box-shadow:var(--shadow);margin-bottom:24px;border-left:4px solid ${colorMain}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--text-dark)">Año en curso: ${curYear}</div>
+          <div style="font-size:12px;color:var(--text-light)">${curY.rows ? curY.rows.length : 0} meses con datos</div>
+        </div>
+        ${prevY ? `<div style="font-size:12px;color:var(--text-light)">vs ${prevYear}: Glosa ${fmtPct(prevY.pctGlosaAnual||0)}</div>` : ''}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
+        <div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-light);margin-bottom:6px">Radicado</div>
+          <div style="font-family:var(--mono);font-size:18px;font-weight:500">${fmtCOP(curY.totRad||0)}</div>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#e5a800;margin-bottom:6px">Glosa Inicial</div>
+          <div style="font-family:var(--mono);font-size:18px;font-weight:500;color:#e5a800">${fmtCOP(curY.totGlosa||0)}</div>
+          <div style="font-size:11px;color:#e5a800">${fmtPct(pctCurGlosa)} del radicado</div>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--c-glosa-viva);margin-bottom:6px">Glosa Viva</div>
+          <div style="font-family:var(--mono);font-size:18px;font-weight:500;color:var(--c-glosa-viva)">${fmtCOP(glosaNeta_cur)}</div>
+          <div style="font-size:11px;color:var(--c-glosa-viva)">${fmtPct(glosaNeta_cur/(curY.totRad||1))} del radicado</div>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--c-nc);margin-bottom:6px">No Recuperado</div>
+          <div style="font-family:var(--mono);font-size:18px;font-weight:500;color:var(--c-nc)">${fmtCOP(curY.totNoRec||0)}</div>
+          <div style="font-size:11px;color:var(--c-nc)">${fmtPct(pctCurNoRec)} del radicado</div>
+        </div>
+      </div>
+      ${renderProgressBars(pctCurGlosa, glosaNeta_cur/(curY.totRad||1), pctCurNoRec, curY.totAcept/(curY.totGlosa||1))}
+    </div>`;
+  }
+
+  // ── TABLA ANUAL ──
+  html += `<div class="tbl-wrap" style="margin-bottom:24px">
+    <div class="tbl-head">
+      <div class="tbl-title">Comparativo Anual · ${ips.name}</div>
+      <span style="font-size:12px;color:var(--text-light)">${years.length} año(s) de datos</span>
+    </div>
+    <div style="overflow-x:auto">
+    <table>
+      <thead><tr>
+        <th style="text-align:left">AÑO</th>
+        <th>RADICADO</th>
+        <th style="color:var(--c-glosa-ini)">GLOSA INICIAL</th>
+        <th>% GLOSA</th>
+        <th style="color:var(--c-glosa-viva)">GLOSA VIVA</th>
+        <th style="color:var(--c-pago-ini)">RECUPERADO</th>
+        <th style="color:var(--c-nc)">NO RECUPERADO</th>
+        <th>% NO REC.</th>
+        <th>CUENTAS</th>
+      </tr></thead>
+      <tbody>`;
+
+  let totRad_t=0, totGlo_t=0, totRec_t=0, totNoRec_t=0, totCue_t=0;
+  years.forEach(y => {
+    const d = data.byYear[y];
+    if (!d) return;
+    const pG = d.totRad > 0 ? d.totGlosa/d.totRad : 0;
+    const pN = d.totRad > 0 ? d.totNoRec/d.totRad : 0;
+    const gViva = Math.max(0, d.totGlosa - d.totAcept);
+    const isCurrent = y === curYear;
+    totRad_t+=d.totRad; totGlo_t+=d.totGlosa; totRec_t+=d.totAcept; totNoRec_t+=d.totNoRec; totCue_t+=d.totCuentas;
+    html += `<tr ${isCurrent?'style="background:#f0faf3;"':''}>
+      <td><strong>${y}</strong>${isCurrent?' <span class="badge badge-green">Actual</span>':''}</td>
+      <td class="mono">${fmtCOP(d.totRad)}</td>
+      <td class="mono" style="color:var(--c-glosa-ini)">${fmtCOP(d.totGlosa)}</td>
+      <td>${pG>0.3?'<span class="badge badge-red">':'<span class="badge '+(pG>0.1?'badge-amber':'badge-green')+'">'} ${fmtPct(pG)}</span></td>
+      <td class="mono" style="color:var(--c-glosa-viva)">${fmtCOP(gViva)}</td>
+      <td class="mono" style="color:var(--c-pago-ini)">${fmtCOP(d.totAcept)}</td>
+      <td class="mono" style="color:var(--c-nc)">${fmtCOP(d.totNoRec)}</td>
+      <td>${fmtPct(pN)}</td>
+      <td class="mono">${fmt0(d.totCuentas)}</td>
+    </tr>`;
+  });
+  const tpG = totRad_t>0?totGlo_t/totRad_t:0;
+  const tpN = totRad_t>0?totNoRec_t/totRad_t:0;
+  html += `<tr class="total-row">
+    <td>TOTAL / PROM.</td>
+    <td class="mono">${fmtCOP(totRad_t)}</td>
+    <td class="mono" style="color:var(--c-glosa-ini)">${fmtCOP(totGlo_t)}</td>
+    <td><strong>${fmtPct(tpG)}</strong></td>
+    <td class="mono" style="color:var(--c-glosa-viva)">${fmtCOP(Math.max(0,totGlo_t-totRec_t))}</td>
+    <td class="mono" style="color:var(--c-pago-ini)">${fmtCOP(totRec_t)}</td>
+    <td class="mono" style="color:var(--c-nc)">${fmtCOP(totNoRec_t)}</td>
+    <td><strong>${fmtPct(tpN)}</strong></td>
+    <td class="mono">${fmt0(totCue_t)}</td>
+  </tr>`;
+  html += `</tbody></table></div></div>`;
+
+  // ── CHART ──
+  html += `<div class="charts-grid">
+    <div class="chart-box">
+      <div class="chart-title">Radicado vs Glosa por año</div>
+      <div class="chart-canvas-wrap"><canvas id="chart-anual-rad"></canvas></div>
+    </div>
+    <div class="chart-box">
+      <div class="chart-title">% Glosa por mes (año actual)</div>
+      <div class="chart-canvas-wrap"><canvas id="chart-mes-glosa"></canvas></div>
+    </div>
+  </div>`;
+
+  body.innerHTML = html;
+  setTimeout(() => { renderChartAnual(data, colorMain); renderChartMes(data, curYear, colorMain); }, 100);
+}
+
+function renderProgressBars(pctGlosa, pctGlosaNeta, pctNoRec, pctRec) {
+  function bar(label, pct, color) {
+    return `<div class="pbar-wrap">
+      <div class="pbar-label"><span>${label}</span><strong style="color:${color}">${fmtPct(pct)}</strong></div>
+      <div class="pbar"><div class="pbar-fill" style="width:${Math.min(100,pct*100)}%;background:${color}"></div></div>
+    </div>`;
+  }
+  return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 24px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+    <div>${bar('% Glosa Inicial',pctGlosa,'var(--c-glosa-ini)')}</div>
+    <div>${bar('% Glosa Viva',pctGlosaNeta,'var(--c-glosa-viva)')}</div>
+    <div>${bar('% Recuperado',pctRec,'var(--c-pago-ini)')}</div>
+    <div>${bar('% No Recuperado',pctNoRec,'var(--c-nc)')}</div>
+  </div>`;
+}
+
+function renderChartAnual(data, color) {
+  const ctx = document.getElementById('chart-anual-rad');
+  if (!ctx) return;
+  if (chartAnual) { chartAnual.destroy(); chartAnual = null; }
+  const years = data.years||[];
+  const radData = years.map(y => Math.round((data.byYear[y]?.totRad||0)/1e6));
+  const gloData  = years.map(y => Math.round((data.byYear[y]?.totGlosa||0)/1e6));
+  chartAnual = new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels: years,
+      datasets:[
+        { label:'Radicado (M$)', data:radData, backgroundColor:color+'33', borderColor:color, borderWidth:2 },
+        { label:'Glosa (M$)',   data:gloData, backgroundColor:'#e5a80033', borderColor:'#e5a800', borderWidth:2 }
+      ]
+    },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{ font:{size:11} } } }, scales:{ y:{ ticks:{ font:{size:10} } }, x:{ ticks:{ font:{size:10} } } } }
+  });
+}
+
+function renderChartMes(data, curYear, color) {
+  const ctx = document.getElementById('chart-mes-glosa');
+  if (!ctx) return;
+  if (chartRad) { chartRad.destroy(); chartRad = null; }
+  const y = data.byYear[curYear];
+  if (!y) return;
+  const meses = y.rows.map(r => r.mes.substring(0,3));
+  const pcts  = y.rows.map(r => parseFloat((r.pctGlosaVal*100).toFixed(1)));
+  chartRad = new Chart(ctx, {
+    type:'line',
+    data:{
+      labels: meses,
+      datasets:[{ label:'% Glosa Valor', data:pcts, borderColor:'#e5a800', backgroundColor:'#e5a80022', tension:.3, fill:true, pointRadius:4 }]
+    },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{ font:{size:11} } } }, scales:{ y:{ ticks:{ callback:v=>v+'%', font:{size:10} } }, x:{ ticks:{ font:{size:10} } } } }
+  });
+}
+
+// ═══════════════════════════════════════════════
+// RENDER — DETALLE MENSUAL
+// ═══════════════════════════════════════════════
+function renderMensual() {
+  const body = document.getElementById('mensual-body');
+  const data = selectedIPS ? ipsStore[selectedIPS].data : null;
+  if (!data) { body.innerHTML = '<div class="empty"><div class="empty-icon">📅</div><div class="empty-txt">Sin datos. Cargue el archivo Excel.</div></div>'; return; }
+  const years = data.years||[];
+  const curYear = years[years.length-1];
+  const filterYear = parseInt(document.getElementById('filter-year-mensual')?.value || curYear);
+
+  let html = `<div style="margin-bottom:20px">
+    <div class="section-title">Detalle Mensual</div>
+    <div class="section-sub">${ipsStore[selectedIPS].name} · Indicadores de glosas por mes</div>
+  </div>
+  <div class="filter-bar">
+    <label style="font-size:12px;font-weight:600;color:var(--text-light)">Año:</label>
+    <select class="fsel" id="filter-year-mensual" onchange="renderMensual()">
+      ${years.map(y=>`<option value="${y}" ${y===filterYear?'selected':''}>${y}</option>`).join('')}
+    </select>
+  </div>`;
+
+  const y = data.byYear[filterYear];
+  if (!y || !y.rows || !y.rows.length) {
+    html += '<div class="empty"><div class="empty-txt">Sin datos para '+filterYear+'</div></div>';
+    body.innerHTML = html; return;
+  }
+
+  html += `<div class="tbl-wrap">
+    <div class="tbl-head">
+      <div class="tbl-title">${filterYear} — ${y.rows.length} meses</div>
+    </div>
+    <div style="overflow-x:auto"><table>
+      <thead><tr>
+        <th style="text-align:left">MES</th>
+        <th>CUENTAS RAD.</th>
+        <th>VALOR RADICADO</th>
+        <th style="color:var(--c-glosa-ini)">GLOSA INICIAL</th>
+        <th>% GLOSA VAL.</th>
+        <th style="color:var(--c-pago-ini)">ACEPTADO</th>
+        <th>% ACEPT.</th>
+        <th style="color:var(--c-nc)">NO RECUPERADO</th>
+        <th>% NO REC.</th>
+        <th>VARIACIÓN</th>
+      </tr></thead>
+      <tbody>`;
+
+  y.rows.forEach(r => {
+    const pGV = r.pctGlosaVal||0;
+    const tendColor = r.variacion > 0 ? '#dc2626' : r.variacion < 0 ? '#15803d' : '#6b7280';
+    const badgePG = pGV > 0.3 ? 'badge-red' : pGV > 0.1 ? 'badge-amber' : 'badge-green';
+    html += `<tr>
+      <td>${r.mes}</td>
+      <td class="mono">${fmt0(r.cuentasRad)}</td>
+      <td class="mono">${fmtCOP(r.valRad)}</td>
+      <td class="mono" style="color:var(--c-glosa-ini)">${fmtCOP(r.valGlosa)}</td>
+      <td><span class="badge ${badgePG}">${fmtPct(pGV)}</span></td>
+      <td class="mono" style="color:var(--c-pago-ini)">${fmtCOP(r.aceptadoVal)}</td>
+      <td>${fmtPct(r.pctAcept)}</td>
+      <td class="mono" style="color:var(--c-nc)">${fmtCOP(r.valNoRec)}</td>
+      <td>${fmtPct(r.pctNoRec)}</td>
+      <td style="color:${tendColor};font-family:var(--mono);font-size:12px">${r.variacion>0?'↑':r.variacion<0?'↓':'—'} ${r.variacion!==0?(r.variacion*100).toFixed(1)+'%':''}</td>
+    </tr>`;
+  });
+
+  const pGTot = y.totRad>0?y.totGlosa/y.totRad:0;
+  const pNTot = y.totRad>0?y.totNoRec/y.totRad:0;
+  const pATot = y.totGlosa>0?y.totAcept/y.totGlosa:0;
+  html += `<tr class="subtotal">
+    <td>TOTAL ${filterYear}</td>
+    <td class="mono">${fmt0(y.totCuentas)}</td>
+    <td class="mono">${fmtCOP(y.totRad)}</td>
+    <td class="mono" style="color:var(--c-glosa-ini)">${fmtCOP(y.totGlosa)}</td>
+    <td><span class="badge ${pGTot>0.3?'badge-red':pGTot>0.1?'badge-amber':'badge-green'}">${fmtPct(pGTot)}</span></td>
+    <td class="mono" style="color:var(--c-pago-ini)">${fmtCOP(y.totAcept)}</td>
+    <td>${fmtPct(pATot)}</td>
+    <td class="mono" style="color:var(--c-nc)">${fmtCOP(y.totNoRec)}</td>
+    <td>${fmtPct(pNTot)}</td>
+    <td>—</td>
+  </tr>`;
+  html += `</tbody></table></div></div>`;
+  body.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════
+// RENDER — ENTIDADES
+// ═══════════════════════════════════════════════
+function renderEntidades() {
+  const body = document.getElementById('entidades-body');
+  const data = selectedIPS ? ipsStore[selectedIPS].data : null;
+  if (!data || !data.byYearEnt) { body.innerHTML = '<div class="empty"><div class="empty-icon">🏢</div><div class="empty-txt">Sin datos de entidades. Asegúrese de que el Excel tenga la hoja de glosa viva.</div></div>'; return; }
+  const years = data.years||[];
+  const curYear = years[years.length-1];
+  const filterYear = parseInt(document.getElementById('filter-year-ent')?.value || curYear);
+  const byEnt = data.byYearEnt[filterYear];
+
+  let html = `<div style="margin-bottom:20px">
+    <div class="section-title">Glosa Viva por Entidad</div>
+    <div class="section-sub">${ipsStore[selectedIPS].name} · Distribución de glosa viva por aseguradora</div>
+  </div>
+  <div class="filter-bar">
+    <label style="font-size:12px;font-weight:600;color:var(--text-light)">Año:</label>
+    <select class="fsel" id="filter-year-ent" onchange="renderEntidades()">
+      ${years.map(y=>`<option value="${y}" ${y===filterYear?'selected':''}>${y}</option>`).join('')}
+    </select>
+  </div>`;
+
+  if (!byEnt || !Object.keys(byEnt).length) {
+    html += '<div class="empty"><div class="empty-txt">Sin datos de entidades para '+filterYear+'</div></div>';
+    body.innerHTML = html; return;
+  }
+
+  // Build summary by entity (TOTAL column)
+  const entSummary = Object.entries(byEnt)
+    .map(([ent, meses]) => {
+      const t = meses['TOTAL'] || { cant:0, valor:0, pct:0 };
+      return { ent, cant:t.cant, valor:t.valor, pct:t.pct };
+    })
+    .filter(e => e.valor > 0)
+    .sort((a,b) => b.valor - a.valor);
+
+  const totValor = entSummary.reduce((s,e) => s+e.valor, 0);
+
+  // KPI cards
+  html += `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px">
+    <div class="kpi-card" style="border-top-color:var(--c-glosa-viva)">
+      <div class="kpi-label">Total Glosa Viva ${filterYear}</div>
+      <div class="kpi-value" style="color:var(--c-glosa-viva)">${fmtCOP(totValor)}</div>
+      <div class="kpi-sub">${entSummary.length} entidades con glosa activa</div>
+    </div>
+    <div class="kpi-card" style="border-top-color:var(--c-glosa-ini)">
+      <div class="kpi-label">Mayor Concentración</div>
+      <div class="kpi-value" style="font-size:14px">${entSummary[0]?.ent?.replace(/^\d+-/,'')||'—'}</div>
+      <div class="kpi-sub">${fmtCOP(entSummary[0]?.valor||0)} · ${fmtPct(entSummary[0]?.pct||0)}</div>
+    </div>
+    <div class="kpi-card" style="border-top-color:var(--c-nc)">
+      <div class="kpi-label">Entidades con Glosa</div>
+      <div class="kpi-value">${entSummary.length}</div>
+      <div class="kpi-sub">de ${Object.keys(byEnt).length} entidades registradas</div>
+    </div>
+  </div>`;
+
+  // Chart + table side by side
+  html += `<div style="display:grid;grid-template-columns:1fr 1.5fr;gap:16px;margin-bottom:20px">
+    <div class="chart-box">
+      <div class="chart-title">Top entidades por glosa viva ${filterYear}</div>
+      <div class="chart-canvas-wrap" style="height:260px"><canvas id="chart-ent-donut"></canvas></div>
+    </div>
+    <div class="tbl-wrap" style="box-shadow:none;margin-bottom:0">
+      <table>
+        <thead><tr>
+          <th style="text-align:left">ENTIDAD</th>
+          <th>CUENTAS</th>
+          <th style="color:var(--c-glosa-viva)">GLOSA VIVA</th>
+          <th>% PARTICIP.</th>
+        </tr></thead>
+        <tbody>`;
+
+  entSummary.forEach((e,i) => {
+    const barW = totValor>0 ? Math.round(e.valor/totValor*100) : 0;
+    const shortName = e.ent.replace(/^\d+-/,'').substring(0,35);
+    html += `<tr>
+      <td style="font-size:12px">${i+1}. ${shortName}</td>
+      <td class="mono">${fmt0(e.cant)}</td>
+      <td class="mono" style="color:var(--c-glosa-viva)">${fmtCOP(e.valor)}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="width:60px;height:5px;background:#f3f4f6;border-radius:3px"><div style="width:${barW}%;height:100%;background:var(--c-glosa-viva);border-radius:3px"></div></div>
+          <span style="font-size:11px;font-weight:700;color:var(--c-glosa-viva)">${barW}%</span>
+        </div>
+      </td>
+    </tr>`;
+  });
+
+  html += `</tbody></table>
+    </div>
+  </div>`;
+
+  // Monthly detail table
+  html += `<div class="tbl-wrap">
+    <div class="tbl-head"><div class="tbl-title">Detalle mensual glosa viva por entidad · ${filterYear}</div></div>
+    <div style="overflow-x:auto"><table>
+      <thead><tr>
+        <th style="text-align:left">ENTIDAD</th>
+        ${MESES.slice(0,12).map(m=>`<th style="font-size:9px">${m.substring(0,3)}</th>`).join('')}
+        <th style="color:var(--c-glosa-viva)">TOTAL</th>
+      </tr></thead>
+      <tbody>`;
+
+  entSummary.forEach(e => {
+    const mData = byEnt[e.ent];
+    const shortName = e.ent.replace(/^\d+-/,'').substring(0,30);
+    html += `<tr>
+      <td style="font-size:11px;max-width:160px">${shortName}</td>
+      ${MESES.map(m => {
+        const mv = mData[m];
+        const v = mv ? mv.valor : 0;
+        return `<td class="mono" style="font-size:11px;${v>0?'color:var(--c-glosa-viva)':''}">${v>0?fmtCOP(v):'—'}</td>`;
+      }).join('')}
+      <td class="mono" style="color:var(--c-glosa-viva);font-weight:700">${fmtCOP(e.valor)}</td>
+    </tr>`;
+  });
+  html += `</tbody></table></div></div>`;
+  body.innerHTML = html;
+
+  // Render donut chart
+  setTimeout(() => {
+    const ctx = document.getElementById('chart-ent-donut');
+    if (!ctx || !entSummary.length) return;
+    if (chartEnt) { chartEnt.destroy(); chartEnt = null; }
+    const top5 = entSummary.slice(0,5);
+    const others = entSummary.slice(5).reduce((s,e)=>s+e.valor,0);
+    const labels = [...top5.map(e=>e.ent.replace(/^\d+-/,'').substring(0,20)), others>0?'Otras':''].filter(Boolean);
+    const vals = [...top5.map(e=>e.valor), others>0?others:null].filter(v=>v);
+    const colors = ['#8b5cf6','#e5a800','#2d9e6b','#1d6ca8','#dc2626','#6b7280'];
+    chartEnt = new Chart(ctx, {
+      type:'doughnut',
+      data:{ labels, datasets:[{ data:vals, backgroundColor:colors.slice(0,vals.length), borderWidth:2 }] },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ font:{size:10}, boxWidth:10 } } } }
+    });
+  }, 100);
+}
+
+// ═══════════════════════════════════════════════
+// RENDER — TENDENCIAS
+// ═══════════════════════════════════════════════
+function renderTendencias() {
+  const body = document.getElementById('tendencias-body');
+  const data = selectedIPS ? ipsStore[selectedIPS].data : null;
+  if (!data) { body.innerHTML = '<div class="empty"><div class="empty-icon">📈</div><div class="empty-txt">Sin datos. Cargue el archivo Excel.</div></div>'; return; }
+  const years = data.years||[];
+  const ips = ipsStore[selectedIPS];
+
+  let html = `<div style="margin-bottom:20px">
+    <div class="section-title">Tendencias</div>
+    <div class="section-sub">${ips.name} · Evolución histórica de indicadores de glosa</div>
+  </div>`;
+
+  // % Glosa anual trend
+  html += `<div class="charts-grid" style="margin-bottom:20px">
+    <div class="chart-box">
+      <div class="chart-title">Evolución % Glosa vs Radicado por año</div>
+      <div class="chart-canvas-wrap"><canvas id="chart-tend-pct"></canvas></div>
+    </div>
+    <div class="chart-box">
+      <div class="chart-title">Radicado vs Glosa vs Recuperado (millones $)</div>
+      <div class="chart-canvas-wrap"><canvas id="chart-tend-vals"></canvas></div>
+    </div>
+  </div>`;
+
+  // Summary table
+  html += `<div class="tbl-wrap">
+    <div class="tbl-head"><div class="tbl-title">Indicadores por año — histórico completo</div></div>
+    <div style="overflow-x:auto"><table>
+      <thead><tr>
+        <th style="text-align:left">AÑO</th><th>MESES</th>
+        <th>RADICADO</th>
+        <th style="color:var(--c-glosa-ini)">GLOSA TOTAL</th>
+        <th>% GLOSA</th>
+        <th style="color:var(--c-pago-ini)">RECUPERADO</th>
+        <th>% REC. / GLOSA</th>
+        <th style="color:var(--c-glosa-viva)">GLOSA VIVA</th>
+        <th style="color:var(--c-nc)">NO RECUPERADO</th>
+        <th>PROM.MES % GLOSA</th>
+      </tr></thead>
+      <tbody>`;
+
+  years.forEach(y => {
+    const d = data.byYear[y];
+    if (!d) return;
+    const pG  = d.totRad>0 ? d.totGlosa/d.totRad : 0;
+    const pRec = d.totGlosa>0 ? d.totAcept/d.totGlosa : 0;
+    const gViva = Math.max(0, d.totGlosa - d.totAcept);
+    const promMes = d.promPctGlosa || 0;
+    const badge = pG>0.3?'badge-red':pG>0.1?'badge-amber':'badge-green';
+    html += `<tr>
+      <td><strong>${y}</strong></td>
+      <td class="mono">${d.rows ? d.rows.length : 0}</td>
+      <td class="mono">${fmtCOP(d.totRad)}</td>
+      <td class="mono" style="color:var(--c-glosa-ini)">${fmtCOP(d.totGlosa)}</td>
+      <td><span class="badge ${badge}">${fmtPct(pG)}</span></td>
+      <td class="mono" style="color:var(--c-pago-ini)">${fmtCOP(d.totAcept)}</td>
+      <td>${fmtPct(pRec)}</td>
+      <td class="mono" style="color:var(--c-glosa-viva)">${fmtCOP(gViva)}</td>
+      <td class="mono" style="color:var(--c-nc)">${fmtCOP(d.totNoRec)}</td>
+      <td style="font-family:var(--mono);font-size:12px">${fmtPct(promMes)}</td>
+    </tr>`;
+  });
+  html += `</tbody></table></div></div>`;
+  body.innerHTML = html;
+
+  setTimeout(() => {
+    // Chart 1: % glosa por año
+    const ctx1 = document.getElementById('chart-tend-pct');
+    if (ctx1) {
+      if (chartGlosa) { chartGlosa.destroy(); chartGlosa=null; }
+      chartGlosa = new Chart(ctx1, {
+        type:'line',
+        data:{
+          labels: years,
+          datasets:[
+            { label:'% Glosa s/Radicado', data:years.map(y=>(data.byYear[y]?.pctGlosaAnual*100||0).toFixed(1)), borderColor:'#e5a800', backgroundColor:'#e5a80022', tension:.3, fill:true },
+            { label:'% No Recuperado', data:years.map(y=>(data.byYear[y]?.pctNoRecAnual*100||0).toFixed(1)), borderColor:'#dc2626', backgroundColor:'#dc262622', tension:.3, fill:true }
+          ]
+        },
+        options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{font:{size:11}} } }, scales:{ y:{ ticks:{ callback:v=>v+'%', font:{size:10} } } } }
+      });
+    }
+    // Chart 2: valores
+    const ctx2 = document.getElementById('chart-tend-vals');
+    if (ctx2) {
+      const barChartRef = ctx2.chart;
+      if (barChartRef) barChartRef.destroy();
+      new Chart(ctx2, {
+        type:'bar',
+        data:{
+          labels: years,
+          datasets:[
+            { label:'Radicado', data:years.map(y=>Math.round((data.byYear[y]?.totRad||0)/1e6)), backgroundColor:ips.color+'44', borderColor:ips.color, borderWidth:2 },
+            { label:'Glosa', data:years.map(y=>Math.round((data.byYear[y]?.totGlosa||0)/1e6)), backgroundColor:'#e5a80044', borderColor:'#e5a800', borderWidth:2 },
+            { label:'Recuperado', data:years.map(y=>Math.round((data.byYear[y]?.totAcept||0)/1e6)), backgroundColor:'#2d9e6b44', borderColor:'#2d9e6b', borderWidth:2 },
+          ]
+        },
+        options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{font:{size:11}} } }, scales:{ y:{ ticks:{ callback:v=>v+'M', font:{size:10} } } } }
+      });
+    }
+  }, 100);
+}
+
+// ═══════════════════════════════════════════════
+// COMPARATIVO HISTÓRICO DE CORTES
+// ═══════════════════════════════════════════════
+
+// Verificar si el usuario actual puede usar comparativos
+function canUseComparativo() {
+  return SESSION_USER && COMP_ROLES_ALLOWED.includes(SESSION_USER.rol);
+}
+
+async function renderComparativo() {
+  const body = document.getElementById('comparativo-body');
+  if (!body) return;
+
+  // Acceso restringido: solo admin y gerencia
+  if (!canUseComparativo()) {
+    body.innerHTML = `<div class="comp-locked-banner">
+      <div class="cl-icon">🔒</div>
+      <div class="cl-title">Módulo de Comparativos Históricos</div>
+      <div class="cl-sub">Disponible únicamente para Gerencia y Administración.</div>
+    </div>`;
+    return;
+  }
+
+  // IPS selector - usar la seleccionada o forzar selección
+  const ipsId = COMP_STATE.ipsId || selectedIPS;
+  if (!ipsId) {
+    body.innerHTML = `<div class="empty"><div class="empty-icon">⚖️</div><div class="empty-txt">Seleccione una IPS en el panel lateral primero.</div></div>`;
+    return;
+  }
+  COMP_STATE.ipsId = ipsId;
+
+  body.innerHTML = `<div style="padding:60px;text-align:center;color:var(--text-light)">
+    <div class="spinner"></div>Cargando historial de cortes...
+  </div>`;
+
+  // Cargar historial desde Supabase
+  const snaps = await loadHistorial(ipsId);
+  COMP_STATE.allSnaps = snaps;
+
+  if (snaps.length < 2) {
+    body.innerHTML = `<div style="margin-bottom:20px">
+      <div class="section-title">Comparativo de Cortes Históricos</div>
+      <div class="section-sub">${ipsStore[ipsId].name}</div>
+    </div>
+    <div class="comp-locked-banner" style="border-color:var(--border);background:var(--surface)">
+      <div class="cl-icon">📂</div>
+      <div class="cl-title" style="color:var(--text-mid)">Historial insuficiente</div>
+      <div class="cl-sub" style="color:var(--text-light)">Se necesitan mínimo 2 cortes cargados para la misma IPS.<br>
+      Actualmente hay <strong>${snaps.length}</strong> corte(s) registrado(s). Cargue más actualizaciones.</div>
+    </div>`;
+    return;
+  }
+
+  buildComparativoUI(ipsId, snaps);
+}
+
+function buildComparativoUI(ipsId, snaps) {
+  const body = document.getElementById('comparativo-body');
+  const ips = ipsStore[ipsId];
+  const colorMain = ipsId === 'dolormed' ? '#2d6a4f' : '#1d3557';
+
+  // Obtener años disponibles del primer snap (el más reciente)
+  const firstSnap = snaps[0];
+  const years = firstSnap && firstSnap.data ? (firstSnap.data.years || []) : [];
+
+  const yearFilter = COMP_STATE.yearFilter || (years.length ? years[years.length-1] : null);
+
+  // Selector de año para el comparativo
+  const yearOpts = years.map(y => `<option value="${y}" ${y==yearFilter?'selected':''}>${y}</option>`).join('');
+
+  let html = `
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+    <div>
+      <div class="section-title">Comparativo de Cortes Históricos</div>
+      <div class="section-sub">${ips.name} · Seleccione 2 cortes para comparar el mismo año</div>
+    </div>
+    <select class="fsel" onchange="selectIPS(this.value);COMP_STATE.ipsId=this.value;COMP_STATE.snapA=null;COMP_STATE.snapB=null;renderComparativo()">
+      <option value="dolormed" ${ipsId==='dolormed'?'selected':''}>Clínica Dolormed</option>
+      <option value="redesimat" ${ipsId==='redesimat'?'selected':''}>Clínica Redes IMAT</option>
+    </select>
+  </div>
+
+  <!-- Paso 1: Filtrar año de interés -->
+  <div style="background:#fff;border-radius:var(--radius);padding:16px 20px;box-shadow:var(--shadow);margin-bottom:20px;border-left:4px solid ${colorMain}">
+    <div style="font-size:13px;font-weight:700;color:var(--text-dark);margin-bottom:10px">① Seleccione el año a comparar</div>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <label style="font-size:12px;color:var(--text-light)">Año de interés:</label>
+      <select class="fsel" id="comp-year-filter" onchange="COMP_STATE.yearFilter=parseInt(this.value);COMP_STATE.snapA=null;COMP_STATE.snapB=null;buildComparativoUI('${ipsId}',COMP_STATE.allSnaps)">
+        ${yearOpts}
+      </select>
+      <span style="font-size:12px;color:var(--text-light)">Se compararán los datos de ese año en los 2 cortes seleccionados</span>
+    </div>
+  </div>
+
+  <!-- Paso 2: Seleccionar 2 cortes -->
+  <div style="background:#fff;border-radius:var(--radius);padding:16px 20px;box-shadow:var(--shadow);margin-bottom:20px">
+    <div style="font-size:13px;font-weight:700;color:var(--text-dark);margin-bottom:4px">② Seleccione los 2 cortes a comparar</div>
+    <div style="font-size:12px;color:var(--text-light);margin-bottom:12px">Haga clic en el primer corte (Escenario A <span style="background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700">A</span>) y luego en el segundo (Escenario B <span style="background:#fef3c7;color:#b45309;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700">B</span>).</div>
+    <div class="comp-hist-snap-list">
+      ${snaps.map((s,i) => {
+        const isA = COMP_STATE.snapA && COMP_STATE.snapA.id === s.id;
+        const isB = COMP_STATE.snapB && COMP_STATE.snapB.id === s.id;
+        const hasYearData = s.data && s.data.byYear && s.data.byYear[yearFilter];
+        const savedFmt = new Date(s.saved_at).toLocaleString('es-CO',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+        return `<div class="snap-item ${isA?'selected-a':''} ${isB?'selected-b':''} ${!hasYearData?'':'hover'}"
+          onclick="compSelectSnap(${i})"
+          title="${hasYearData?'':'Sin datos para '+yearFilter+' en este corte'}">
+          <div>
+            <div class="si-cutoff">Corte: ${s.cutoff_str}</div>
+            <div class="si-saved">Cargado: ${savedFmt}${!hasYearData?' · <em style=\'color:#dc2626\'>Sin datos '+yearFilter+'</em>':''}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            ${isA?'<span class="snap-item si-badge si-badge-a">A</span>':''}
+            ${isB?'<span class="snap-item si-badge si-badge-b">B</span>':''}
+            ${!isA&&!isB&&hasYearData?'<span style="font-size:11px;color:var(--text-light)">Seleccionar</span>':''}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+
+  // Paso 3: resultado si ambos seleccionados
+  if (COMP_STATE.snapA && COMP_STATE.snapB) {
+    html += buildComparativoResult(COMP_STATE.snapA, COMP_STATE.snapB, yearFilter || years[years.length-1], ips);
+  } else {
+    const needed = (!COMP_STATE.snapA && !COMP_STATE.snapB) ? 'Seleccione el Escenario A' :
+                   (!COMP_STATE.snapB) ? 'Ahora seleccione el Escenario B' : 'Ahora seleccione el Escenario A';
+    html += `<div style="text-align:center;padding:24px;color:var(--text-light);font-size:13px">
+      <div style="font-size:24px;margin-bottom:8px">⬆</div>${needed}
+    </div>`;
+  }
+
+  body.innerHTML = html;
+}
+
+function compSelectSnap(idx) {
+  const snap = COMP_STATE.allSnaps[idx];
+  const yearFilter = COMP_STATE.yearFilter || null;
+  if (yearFilter && snap.data && !snap.data.byYear[yearFilter]) {
+    toast('Este corte no tiene datos del año '+yearFilter, true); return;
+  }
+  if (!COMP_STATE.snapA) {
+    COMP_STATE.snapA = snap;
+  } else if (!COMP_STATE.snapB) {
+    if (snap.id === COMP_STATE.snapA.id) { toast('Seleccione un corte diferente para B', true); return; }
+    COMP_STATE.snapB = snap;
+  } else {
+    // Resetear y empezar de nuevo
+    COMP_STATE.snapA = snap;
+    COMP_STATE.snapB = null;
+  }
+  buildComparativoUI(COMP_STATE.ipsId, COMP_STATE.allSnaps);
+}
+
+function buildComparativoResult(snapA, snapB, year, ips) {
+  const dA = snapA.data.byYear[year];
+  const dB = snapB.data.byYear[year];
+  if (!dA || !dB) return `<div class="empty"><div class="empty-txt">Uno de los cortes no tiene datos para ${year}.</div></div>`;
+
+  // ── Reglas de interpretación por indicador ──────────────────────────────
+  // 'better_down' = mejora si B < A  |  'better_up' = mejora si B > A  |  'neutral' = sin juicio
+  // 'empeora_up'  = alias legible de better_down
+  function delta(vA, vB, rule) {
+    const diff  = vB - vA;
+    const pct   = vA !== 0 ? (diff / Math.abs(vA)) * 100 : 0;
+    let cls;
+    if (diff === 0) { cls = 'cd-neu'; }
+    else if (rule === 'neutral') { cls = 'cd-neu'; }
+    else if (rule === 'better_down') { cls = diff < 0 ? 'cd-down' : 'cd-up'; }
+    else if (rule === 'better_up')   { cls = diff > 0 ? 'cd-down' : 'cd-up'; }
+    else { cls = 'cd-neu'; }
+    const arrow = diff === 0 ? '—' : diff > 0 ? '▲' : '▼';
+    return { diff, pct, cls, arrow };
+  }
+
+  const META_NO_REC = 0.10; // meta máxima 10% del radicado
+
+  // Glosa = col G (valGlosa). Una sola cifra — no hay distinción entre "inicial" y "viva"
+  // La hoja 2 es el detalle por entidad de esa misma columna G
+  const glosaNeta_A = dA.totGlosa; // alias para compatibilidad de plantilla
+  const glosaNeta_B = dB.totGlosa;
+  const cuentasGlos_A = dA.rows ? dA.rows.reduce((s,r)=>s+(r.cuentasGlos||0),0) : 0;
+  const cuentasGlos_B = dB.rows ? dB.rows.reduce((s,r)=>s+(r.cuentasGlos||0),0) : 0;
+
+  // Deltas con regla correcta por indicador
+  const dCuentasGlos = delta(cuentasGlos_A, cuentasGlos_B, 'better_down'); // menos glosadas = mejor
+  const dGlosa       = delta(dA.totGlosa, dB.totGlosa,     'better_down'); // glosa baja = mejor
+  const dGViva       = delta(glosaNeta_A,  glosaNeta_B,     'better_down'); // alias
+  const dAcept       = delta(dA.totAcept,  dB.totAcept,     'better_up');   // aceptado sube = empeora
+  const dNoRec       = delta(dA.totNoRec,  dB.totNoRec,     'better_down'); // no recuperado baja = mejor
+
+  const pctGlosa_A  = dA.totRad>0 ? dA.totGlosa/dA.totRad : 0;
+  const pctGlosa_B  = dB.totRad>0 ? dB.totGlosa/dB.totRad : 0;
+  const dPctGlosa   = delta(pctGlosa_A, pctGlosa_B, 'better_down');
+
+  const pctNoRec_A  = dA.totRad>0 ? dA.totNoRec/dA.totRad : 0;
+  const pctNoRec_B  = dB.totRad>0 ? dB.totNoRec/dB.totRad : 0;
+
+  // Evaluar meta 10% no recuperado
+  function metaBadge(pct) {
+    if (pct <= META_NO_REC)
+      return `<span style="background:#dcfce7;color:#15803d;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700">✓ En meta (≤10%)</span>`;
+    return `<span style="background:#fee2e2;color:#dc2626;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700">✗ Fuera meta (>${Math.round(pct*100)}% &gt; 10%)</span>`;
+  }
+
+  let html = `
+  <!-- PANELES LADO A LADO -->
+  <div class="comp-hist-cols">
+    <div class="comp-hist-panel panel-a">
+      <div class="comp-hist-panel-head">
+        <span class="comp-hist-panel-label">Escenario A · Corte ${snapA.cutoff_str}</span>
+        <span class="comp-hist-panel-cutoff">${year}</span>
+      </div>
+      <div class="comp-hist-panel-body">
+        ${compPanelRows(dA, year, glosaNeta_A, cuentasGlos_A, pctNoRec_A, META_NO_REC)}
+      </div>
+    </div>
+    <div class="comp-hist-panel panel-b">
+      <div class="comp-hist-panel-head">
+        <span class="comp-hist-panel-label">Escenario B · Corte ${snapB.cutoff_str}</span>
+        <span class="comp-hist-panel-cutoff">${year}</span>
+      </div>
+      <div class="comp-hist-panel-body">
+        ${compPanelRows(dB, year, glosaNeta_B, cuentasGlos_B, pctNoRec_B, META_NO_REC)}
+      </div>
+    </div>
+  </div>
+
+  <!-- BLOQUE DELTA ESTRUCTURADO POR INDICADOR -->
+  <div class="comp-delta">
+    <div class="comp-delta-title">Análisis de variación B vs A · Año ${year} · ${ips.name}
+      <span style="font-size:11px;font-weight:400;color:var(--text-light);margin-left:8px">
+        ▼ verde = mejora &nbsp;·&nbsp; ▲ rojo = empeora &nbsp;·&nbsp; — = sin cambio relevante
+      </span>
+    </div>
+
+    <!-- Fila 1: Indicadores de glosa (mejoran si bajan) -->
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-light);margin:0 0 8px;padding-bottom:4px;border-bottom:1px solid var(--border)">
+      Gestión de glosa · mejora si disminuye
+    </div>
+    <div class="comp-delta-grid" style="margin-bottom:16px">
+      ${compDeltaCard('Cuentas Glosadas', cuentasGlos_A, cuentasGlos_B, dCuentasGlos, true)}
+      ${compDeltaCard('Valor Glosa (col. G)', dA.totGlosa, dB.totGlosa, dGlosa, false)}
+      ${compDeltaCardPct('Δ % Glosa / Radicado', dPctGlosa, pctGlosa_A, pctGlosa_B)}
+      ${compDeltaCard('No Recuperado', dA.totNoRec, dB.totNoRec, dNoRec, false)}
+    </div>
+
+    <!-- Fila 2: Aceptado (solo puede subir = empeora si sube) -->
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-light);margin:0 0 8px;padding-bottom:4px;border-bottom:1px solid var(--border)">
+      Aceptado / pérdida definitiva · empeora si aumenta
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+      ${compDeltaCard('Aceptado Valor', dA.totAcept, dB.totAcept, dAcept, false)}
+      ${compDeltaCard('% Aceptado / Glosa',
+          dA.totGlosa>0?dA.totAcept/dA.totGlosa:0,
+          dB.totGlosa>0?dB.totAcept/dB.totGlosa:0,
+          delta(dA.totGlosa>0?dA.totAcept/dA.totGlosa:0, dB.totGlosa>0?dB.totAcept/dB.totGlosa:0, 'better_up'),
+          true, null, true /* es pct */)}
+      <div class="comp-delta-item" style="background:#fef9ec;border:1px solid #fde68a">
+        <div class="cd-label" style="color:#b45309">Interpretación</div>
+        <div style="font-size:11px;color:#92400e;line-height:1.5;margin-top:4px">
+          El valor aceptado solo puede aumentar entre cortes.<br>
+          <strong>Aumento = más glosa reconocida = pérdida acumulada</strong>.
+        </div>
+      </div>
+    </div>
+
+    <!-- Fila 3: No recuperado vs meta 10% -->
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-light);margin:0 0 8px;padding-bottom:4px;border-bottom:1px solid var(--border)">
+      No recuperado · meta máxima 10% del radicado · empeora si aumenta
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+      ${compDeltaCard('No Recuperado (A)', null, null, null, false, null, false, fmtCOP(dA.totNoRec))}
+      ${compDeltaCard('No Recuperado (B)', null, null, null, false, null, false, fmtCOP(dB.totNoRec))}
+      ${compDeltaCard('Variación', dA.totNoRec, dB.totNoRec, dNoRec, false)}
+      <div class="comp-delta-item">
+        <div class="cd-label">Cumplimiento Meta</div>
+        <div style="margin-top:6px">${metaBadge(pctNoRec_A)}</div>
+        <div style="margin-top:4px;font-size:10px;color:var(--text-light)">A: ${fmtPct(pctNoRec_A)}</div>
+        <div style="margin-top:4px">${metaBadge(pctNoRec_B)}</div>
+        <div style="margin-top:4px;font-size:10px;color:var(--text-light)">B: ${fmtPct(pctNoRec_B)}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABLA MENSUAL COMPARATIVA -->
+  <div class="tbl-wrap">
+    <div class="tbl-head">
+      <div class="tbl-title">Comparativo mensual · ${year}</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span style="background:#dbeafe;color:#1d4ed8;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700">A: ${snapA.cutoff_str}</span>
+        <span style="background:#fef3c7;color:#b45309;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700">B: ${snapB.cutoff_str}</span>
+        <span style="font-size:10px;color:var(--text-light)">Radicado y valor radicado son producción — sin comparativo de mejora/empeora</span>
+      </div>
+    </div>
+    <div style="overflow-x:auto"><table>
+      <thead><tr>
+        <th style="text-align:left">MES</th>
+        <th colspan="2" style="text-align:center;background:#f3f4f6;color:#6b7280;font-size:10px">CUENTAS GLOSADAS ↓mejor</th>
+        <th colspan="2" style="text-align:center;background:#fffbeb;color:#b45309;font-size:10px">GLOSA VIVA ↓mejor</th>
+        <th colspan="2" style="text-align:center;background:#fef3f2;color:#be123c;font-size:10px">ACEPTADO ↑empeora</th>
+        <th colspan="2" style="text-align:center;background:#fff1f2;color:#be123c;font-size:10px">NO RECUPERADO ↓mejor · meta≤10%</th>
+        <th style="text-align:center;font-size:10px;color:#6d28d9">Δ GLOSA VIVA</th>
+      </tr>
+      <tr>
+        <th></th>
+        <th style="background:#f3f4f622;font-size:9px;color:#6b7280">A</th><th style="background:#f3f4f622;font-size:9px;color:#6b7280">B</th>
+        <th style="background:#fffbeb22;color:#b45309;font-size:9px">A</th><th style="background:#fffbeb22;color:#b45309;font-size:9px">B</th>
+        <th style="background:#fef3f222;color:#be123c;font-size:9px">A</th><th style="background:#fef3f222;color:#be123c;font-size:9px">B</th>
+        <th style="background:#fff1f222;color:#be123c;font-size:9px">A</th><th style="background:#fff1f222;color:#be123c;font-size:9px">B</th>
+        <th></th>
+      </tr></thead>
+      <tbody>`;
+
+  const rowsA = {};
+  const rowsB = {};
+  if (dA.rows) dA.rows.forEach(r => rowsA[r.mes] = r);
+  if (dB.rows) dB.rows.forEach(r => rowsB[r.mes] = r);
+  const allMeses = [...new Set([...Object.keys(rowsA),...Object.keys(rowsB)])].sort((a,b)=>MESES.indexOf(a)-MESES.indexOf(b));
+
+  allMeses.forEach(mes => {
+    const rA = rowsA[mes];
+    const rB = rowsB[mes];
+    const gVA = rA ? Math.max(0, rA.valGlosa - rA.aceptadoVal) : 0;
+    const gVB = rB ? Math.max(0, rB.valGlosa - rB.aceptadoVal) : 0;
+    const noRecA = rA ? rA.valNoRec : 0;
+    const noRecB = rB ? rB.valNoRec : 0;
+    // Meta no rec por mes
+    const metaA = rA && rA.valRad > 0 ? noRecA/rA.valRad <= META_NO_REC : null;
+    const metaB = rB && rB.valRad > 0 ? noRecB/rB.valRad <= META_NO_REC : null;
+    // Delta glosa viva: baja = verde
+    const dGV  = gVB - gVA;
+    const dGVcls = dGV === 0 ? '#6b7280' : dGV < 0 ? '#15803d' : '#dc2626';
+    const dGVarr = dGV === 0 ? '—' : dGV < 0 ? '▼' : '▲';
+    // Delta aceptado: sube = rojo (empeora)
+    const acA = rA ? rA.aceptadoVal : 0;
+    const acB = rB ? rB.aceptadoVal : 0;
+    // Delta no rec: baja = verde
+    const dNR = noRecB - noRecA;
+    const dNRcls = dNR === 0 ? '#6b7280' : dNR < 0 ? '#15803d' : '#dc2626';
+
+    const metaDotA = metaA === null ? '' : metaA
+      ? '<span style="color:#15803d;font-size:9px">✓</span>'
+      : '<span style="color:#dc2626;font-size:9px">✗</span>';
+    const metaDotB = metaB === null ? '' : metaB
+      ? '<span style="color:#15803d;font-size:9px">✓</span>'
+      : '<span style="color:#dc2626;font-size:9px">✗</span>';
+
+    html += `<tr>
+      <td style="font-size:12px;font-weight:500">${mes.substring(0,3)}</td>
+      <td class="mono" style="font-size:11px;color:#6b7280">${rA?fmt0(rA.cuentasGlos):'—'}</td>
+      <td class="mono" style="font-size:11px;color:#6b7280">${rB?fmt0(rB.cuentasGlos):'—'}</td>
+      <td class="mono" style="font-size:11px;color:#b45309">${rA?fmtCOP(gVA):'—'}</td>
+      <td class="mono" style="font-size:11px;color:#b45309">${rB?fmtCOP(gVB):'—'}</td>
+      <td class="mono" style="font-size:11px;color:#be123c">${rA?fmtCOP(acA):'—'}</td>
+      <td class="mono" style="font-size:11px;color:#be123c">${rB?fmtCOP(acB):'—'}</td>
+      <td class="mono" style="font-size:11px;color:#dc2626">${rA?fmtCOP(noRecA)+' '+metaDotA:'—'}</td>
+      <td class="mono" style="font-size:11px;color:#dc2626">${rB?fmtCOP(noRecB)+' '+metaDotB:'—'}</td>
+      <td style="text-align:center;font-size:11px;font-weight:700;color:${dGVcls}">${dGVarr}${dGV!==0?' '+fmtCOP(Math.abs(dGV)):''}</td>
+    </tr>`;
+  });
+
+  // Fila totales con meta no rec
+  const metaTotA = dA.totRad > 0 ? pctNoRec_A <= META_NO_REC : null;
+  const metaTotB = dB.totRad > 0 ? pctNoRec_B <= META_NO_REC : null;
+  const dGVTot = glosaNeta_B - glosaNeta_A;
+  const dGVTotCls = dGVTot === 0 ? '#6b7280' : dGVTot < 0 ? '#15803d' : '#dc2626';
+  html += `<tr class="subtotal">
+    <td>TOTAL ${year}</td>
+    <td class="mono" style="font-size:11px">${fmt0(cuentasGlos_A)}</td>
+    <td class="mono" style="font-size:11px">${fmt0(cuentasGlos_B)}</td>
+    <td class="mono" style="color:#b45309;font-size:11px">${fmtCOP(glosaNeta_A)}</td>
+    <td class="mono" style="color:#b45309;font-size:11px">${fmtCOP(glosaNeta_B)}</td>
+    <td class="mono" style="color:#be123c;font-size:11px">${fmtCOP(dA.totAcept)}</td>
+    <td class="mono" style="color:#be123c;font-size:11px">${fmtCOP(dB.totAcept)}</td>
+    <td class="mono" style="color:#dc2626;font-size:11px">${fmtCOP(dA.totNoRec)} <span style="font-size:10px">${fmtPct(pctNoRec_A)} ${metaTotA===true?'✓':metaTotA===false?'✗':''}</span></td>
+    <td class="mono" style="color:#dc2626;font-size:11px">${fmtCOP(dB.totNoRec)} <span style="font-size:10px">${fmtPct(pctNoRec_B)} ${metaTotB===true?'✓':metaTotB===false?'✗':''}</span></td>
+    <td style="text-align:center;font-size:11px;font-weight:700;color:${dGVTotCls}">${dGVTot===0?'—':dGVTot<0?'▼':'▲'} ${dGVTot!==0?fmtCOP(Math.abs(dGVTot)):''}</td>
+  </tr>`;
+  html += `</tbody></table></div></div>`;
+
+  html += `<div style="text-align:right;margin-top:12px">
+    <button class="fbtn" onclick="COMP_STATE.snapA=null;COMP_STATE.snapB=null;buildComparativoUI(COMP_STATE.ipsId,COMP_STATE.allSnaps)">
+      ↺ Nueva selección
+    </button>
+  </div>`;
+
+  return html;
+}
+
+function compPanelRows(d, year, glosaNeta, cuentasGlos, pctNoRec, meta) {
+  const pG = d.totRad>0?d.totGlosa/d.totRad:0;
+  const pR = d.totGlosa>0?d.totAcept/d.totGlosa:0;
+  const metaOk = pctNoRec <= meta;
+  return `
+  <div class="comp-hist-row">
+    <div class="chr-label">Valor Radicado ${year} <span style="font-size:10px;font-weight:400;color:var(--text-light)">(producción — sin comparativo)</span></div>
+    <div class="chr-val" style="color:var(--text-dark)">${fmtCOP(d.totRad)} &nbsp;<span style="font-size:11px;color:var(--text-light)">${fmt0(d.totCuentas)} cuentas</span></div>
+  </div>
+  <div class="comp-hist-row">
+    <div class="chr-label">Cuentas Glosadas &nbsp;<span style="font-size:9px;color:#15803d">↓ mejora si disminuye</span></div>
+    <div class="chr-val" style="color:#e5a800">${fmt0(cuentasGlos)} <span style="font-size:11px;color:var(--text-light)">cuentas · ${fmtPct(pG)} del radicado</span></div>
+  </div>
+  <div class="comp-hist-row">
+    <div class="chr-label">Glosa (col. G · misma cifra en H1 y H2) &nbsp;<span style="font-size:9px;color:#15803d">↓ mejora si disminuye</span></div>
+    <div class="chr-val" style="color:var(--c-glosa-viva)">${fmtCOP(d.totGlosa)} <span style="font-size:11px;color:var(--text-light)">${fmtPct(pG)} del radicado</span></div>
+  </div>
+  <div class="comp-hist-row">
+    <div class="chr-label">Aceptado (pérdida acumulada) &nbsp;<span style="font-size:9px;color:#dc2626">↑ empeora si aumenta</span></div>
+    <div class="chr-val" style="color:#be123c">${fmtCOP(d.totAcept)} <span style="font-size:11px;color:var(--text-light)">${fmtPct(pR)} de la glosa</span></div>
+  </div>
+  <div class="comp-hist-row">
+    <div class="chr-label">No Recuperado &nbsp;<span style="font-size:9px;color:#dc2626">↑ empeora · meta ≤ 10% del radicado</span></div>
+    <div class="chr-val" style="color:#dc2626">${fmtCOP(d.totNoRec)}
+      <span style="font-size:11px;color:var(--text-light)">${fmtPct(pctNoRec)}</span>
+      &nbsp;<span style="background:${metaOk?'#dcfce7':'#fee2e2'};color:${metaOk?'#15803d':'#dc2626'};padding:1px 6px;border-radius:8px;font-size:10px;font-weight:700">${metaOk?'✓ Meta OK':'✗ Fuera meta'}</span>
+    </div>
+  </div>`;
+}
+
+// compDeltaCard unificada: cuenta, valor monetario o porcentaje
+// isPct=true muestra como porcentaje en lugar de COP
+// staticVal sobreescribe la celda con texto fijo (sin delta)
+function compDeltaCard(label, vA, vB, d, _unused, staticVal, staticNoArrow, staticStr) {
+  if (staticStr !== undefined) {
+    return `<div class="comp-delta-item">
+      <div class="cd-label">${label}</div>
+      <div class="cd-val" style="font-size:14px">${staticStr}</div>
+    </div>`;
+  }
+  if (staticVal !== undefined && staticVal !== null) {
+    // staticVal = true → es porcentaje (vA y vB ya son fracciones 0–1)
+    const fmtV = v => staticVal ? fmtPct(v) : (Number.isInteger(vB) && Math.abs(vB) < 1e6 ? fmt0(vB) : fmtCOP(vB));
+    const diffStr = staticVal
+      ? ((d.diff>=0?'+':'')+((d.diff)*100).toFixed(2)+'pp')
+      : (d.diff>=0?'+':'-')+fmtCOP(Math.abs(d.diff));
+    return `<div class="comp-delta-item">
+      <div class="cd-label">${label}</div>
+      <div class="cd-val" style="font-size:13px">${fmtPct(vB)}</div>
+      <div class="cd-arrow ${d.cls}">${d.arrow} ${diffStr} (${d.pct>=0?'+':''}${d.pct.toFixed(1)}%)</div>
+    </div>`;
+  }
+  // Detectar si es entero pequeño (cuentas) o valor monetario
+  const esEntero = Number.isInteger(vA) && Number.isInteger(vB) && Math.abs(vB) < 1e6;
+  const fmtVal   = v => esEntero ? fmt0(v) : fmtCOP(v);
+  const diffStr  = d.diff >= 0 ? '+'+fmtVal(d.diff) : '-'+fmtVal(Math.abs(d.diff));
+  return `<div class="comp-delta-item">
+    <div class="cd-label">${label}</div>
+    <div class="cd-val ${d.cls}" style="font-size:${esEntero?'18':'14'}px">${fmtVal(vB)}</div>
+    <div class="cd-arrow ${d.cls}">${d.arrow} ${diffStr} (${d.pct>=0?'+':''}${d.pct.toFixed(1)}%)</div>
+  </div>`;
+}
+
+function compDeltaCardPct(label, d, pA, pB) {
+  const diffPp  = (pB - pA) * 100;
+  const ppStr   = (diffPp >= 0 ? '+' : '') + diffPp.toFixed(2) + ' pp';
+  const msg     = d.cls === 'cd-down' ? '\u25bc Mejoró · glosa bajó'
+                : d.cls === 'cd-up'   ? '\u25b2 Empeoró · glosa subió'
+                : '— Sin cambio significativo';
+  return `<div class="comp-delta-item">
+    <div class="cd-label">${label}</div>
+    <div style="display:flex;gap:16px;align-items:baseline;margin:6px 0 4px">
+      <div style="text-align:center">
+        <div style="font-size:9px;color:#1d4ed8;font-weight:700;margin-bottom:2px">A</div>
+        <div style="font-family:var(--mono);font-size:15px;color:#1d4ed8">${fmtPct(pA)}</div>
+      </div>
+      <div style="color:var(--text-light);font-size:12px">→</div>
+      <div style="text-align:center">
+        <div style="font-size:9px;color:#b45309;font-weight:700;margin-bottom:2px">B</div>
+        <div style="font-family:var(--mono);font-size:15px;color:#b45309">${fmtPct(pB)}</div>
+      </div>
+    </div>
+    <div class="cd-val ${d.cls}" style="font-size:16px;margin-bottom:2px">${d.arrow} ${ppStr}</div>
+    <div style="font-size:10px;font-weight:600;color:${d.cls==='cd-down'?'#15803d':d.cls==='cd-up'?'#dc2626':'#6b7280'}">${msg}</div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════
+// CONFIG UI
+// ═══════════════════════════════════════════════
+function buildConfigUI() {
+  const body = document.getElementById('config-body');
+  if (!body) return;
+  const isAdmin = SESSION_USER && SESSION_USER.rol === 'admin';
+  // Coordinadores solo ven su IPS. Admin ve ambas.
+  const ipsToShow = [];
+  if (isAdmin) { ipsToShow.push('dolormed','redesimat'); }
+  else {
+    // Determine by username convention: coord_dolormed / coord_redesimat
+    const u = SESSION_USER?.usuario || '';
+    if (u.includes('redesimat') || u.includes('redes')) ipsToShow.push('redesimat');
+    else ipsToShow.push('dolormed'); // default
+  }
+
+  body.innerHTML = ipsToShow.map(ipsId => {
+    const s = ipsStore[ipsId];
+    const isLoaded = !!s.data;
+    const colorMain = ipsId === 'dolormed' ? 'var(--dolormed)' : 'var(--redesimat)';
+    const colorLight = ipsId === 'dolormed' ? 'var(--dolormed-lt)' : 'var(--redesimat-lt)';
+    return `<div class="admin-card">
+      <div class="admin-card-head">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:9px;height:9px;border-radius:50%;background:${isLoaded?'#22c55e':'#d1d5db'}"></div>
+          <div class="admin-card-title" style="color:${colorMain}">${s.name}</div>
+        </div>
+        ${isLoaded ? `<span style="font-size:11px;color:var(--text-light)">Corte: ${s.cutoff}</span>` : ''}
+      </div>
+      <div class="admin-card-body">
+        ${isLoaded ? `<div style="font-size:12px;color:var(--text-light);margin-bottom:12px">Última actualización: ${s.loadedAt}</div>` : ''}
+        <div style="margin-bottom:10px">
+          <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">Fecha de corte (opcional)</label>
+          <input type="date" id="cutoff-${ipsId}" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif">
+        </div>
+        <div style="margin-bottom:12px">
+          <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">Archivo Excel (2 hojas)</label>
+          <input type="file" id="file-${ipsId}" accept=".xlsx,.xls" style="width:100%;padding:7px;border:1.5px dashed var(--border);border-radius:8px;font-size:12px;cursor:pointer">
+        </div>
+        <button id="btn-${ipsId}" onclick="doLoad('${ipsId}')" style="width:100%;padding:10px;background:${colorMain};color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">
+          ${isLoaded ? '↻ Actualizar base de datos' : '↑ Cargar base de datos'}
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════
+// USERS MANAGEMENT
+// ═══════════════════════════════════════════════
+function showAddUser() {
+  const f = document.getElementById('add-user-form');
+  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+}
+async function crearUsuario() {
+  const nombre = document.getElementById('nu-nombre').value.trim();
+  const usuario = document.getElementById('nu-user').value.trim().toLowerCase();
+  const clave = document.getElementById('nu-pass').value;
+  if (!nombre || !usuario || clave.length < 4) { toast('Complete todos los campos. Contraseña mín. 4 chars.', true); return; }
+  try {
+    await sbU('usuarios', [{ nombre, usuario, clave, activo:true, rol:'viewer' }]);
+    toast('✓ Usuario "'+usuario+'" creado');
+    document.getElementById('add-user-form').style.display = 'none';
+    ['nu-nombre','nu-user','nu-pass'].forEach(id => document.getElementById(id).value='');
+    await cargarUsuarios();
+  } catch(e) { toast('Error: '+e.message, true); }
+}
+async function cargarUsuarios() {
+  try {
+    const users = await sbG('usuarios', 'order=created_at.asc');
+    const el = document.getElementById('lista-usuarios');
+    if (!el) return;
+    if (!users.length) { el.innerHTML='<div class="empty"><div class="empty-txt">Sin usuarios creados.</div></div>'; return; }
+    el.innerHTML = `<table>
+      <thead><tr><th style="text-align:left">Nombre</th><th style="text-align:left">Usuario</th><th style="text-align:left">Rol</th><th>Estado</th><th>Creado</th></tr></thead>
+      <tbody>${users.map(u=>`<tr>
+        <td style="font-weight:500">${u.nombre}</td>
+        <td style="font-family:var(--mono);font-size:12px">${u.usuario}</td>
+        <td><span class="badge ${u.rol==='admin'?'badge-blue':'badge-green'}">${u.rol||'viewer'}</span></td>
+        <td><span class="badge ${u.activo?'badge-green':'badge-red'}">${u.activo?'Activo':'Inactivo'}</span></td>
+        <td style="font-size:12px;color:var(--text-light)">${new Date(u.created_at).toLocaleDateString('es-CO')}</td>
+      </tr>`).join('')}
+      </tbody>
+    </table>`;
+  } catch(e) { console.warn('Error cargando usuarios:', e.message); }
+}
+
+// ═══════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════
+let toastTimer = null;
+function toast(msg, isErr) {
+  const el = document.getElementById('toast');
+  const dot = document.getElementById('tdot');
+  const tmsg = document.getElementById('tmsg');
+  if (!el) return;
+  tmsg.textContent = msg;
+  el.className = 'toast' + (isErr ? ' err' : '');
+  dot.style.background = isErr ? '#ef4444' : '#22c55e';
+  el.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
+}
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', function() {
+  if (checkSession()) {
+    initApp();
+  } else {
+    document.getElementById('login-screen').style.display = 'flex';
+  }
+});
+</script>
+</body>
+</html>

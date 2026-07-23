@@ -923,12 +923,12 @@ window.doLoad = async function(ipsId) {
       const rows1 = XLSX.utils.sheet_to_json(ws1, { header:1, defval:null, raw:true });
       const rows2 = XLSX.utils.sheet_to_json(ws2, { header:1, defval:null, raw:true });
 
-      // Convert to object rows for compatibility
-      const objRows1 = rows1.map(r => { const o={}; r.forEach((v,i)=>o[i]=v); return o; });
-      const objRows2 = rows2.map(r => { const o={}; r.forEach((v,i)=>o[i]=v); return o; });
-
-      const sheet1 = processSheet1(objRows1);
-      const sheet2 = processSheet2(objRows2);
+      // Pasar arrays directamente — raw:true devuelve arrays nativos
+      // DIAGNÓSTICO TEMPORAL
+      console.log('Tipo fila 8 H1:', typeof rows1[7], Array.isArray(rows1[7]), JSON.stringify(rows1[7]));
+      console.log('Tipo fila 5 H2:', typeof rows2[4], Array.isArray(rows2[4]), JSON.stringify(rows2[4]));
+      const sheet1 = processSheet1(rows1);
+      const sheet2 = processSheet2(rows2);
 
       // ── MALLA DE VALIDACIÓN CRUZADA (bloqueante) ──
       const erroresValidacion = validateCrossSheet(sheet1, sheet2);

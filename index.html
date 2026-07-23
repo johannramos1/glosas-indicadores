@@ -688,8 +688,8 @@ function processSheet1(rows) {
   // Detectar fila de cabeceras (buscar "AÑO" en col 0)
   let headerRow = -1;
   for (let i=0; i<rows.length; i++) {
-    const vals = Object.values(rows[i]);
-    if (vals[0] && String(vals[0]).toUpperCase().includes('AÑO')) { headerRow = i; break; }
+    const r0 = rows[i][0];
+    if (r0 && String(r0).toUpperCase().includes('AÑO')) { headerRow = i; break; }
   }
   if (headerRow < 0) return { cutoffStr, byYear:{}, byYearMes:{} };
 
@@ -697,35 +697,34 @@ function processSheet1(rows) {
   let currentYear = null;
 
   for (let i = headerRow+1; i < rows.length; i++) {
-    const cols = Object.values(rows[i]);
-    if (cols.every(v => v === null || v === undefined)) continue;
+    const r = rows[i]; // array directo — índice = columna Excel real
+    if (!r || r.every(v => v === null || v === undefined)) continue;
 
-    // Detectar año: puede ser número o string, en col 0
-    // XLSX con raw:false convierte todo a string
-    const col0 = cols[0];
+    // Detectar año en col 0 (colA)
+    const col0 = r[0];
     if (col0 !== null && col0 !== undefined && col0 !== '') {
       const yr = parseInt(col0);
       if (!isNaN(yr) && yr > 2000 && yr < 2100) currentYear = yr;
     }
-    const mes = cols[1] ? String(cols[1]).toUpperCase().trim() : null;
-    if (!mes || !MESES.includes(mes)) continue; // skip subtotals y totales
+    const mes = r[1] ? String(r[1]).toUpperCase().trim() : null;
+    if (!mes || !MESES.includes(mes)) continue;
     if (!currentYear) continue;
 
     const key = currentYear + '-' + String(MESES.indexOf(mes)+1).padStart(2,'0');
     const row = {
       anio: currentYear, mes, mesIdx: MESES.indexOf(mes),
-      cuentasRad: parseNum(cols[2])||0,
-      valRad:     parseNum(cols[3])||0,
-      cuentasGlos: parseNum(cols[4])||0,
-      variacion:  parseNum(cols[5])||0,
-      valGlosa:   parseNum(cols[6])||0,
-      pctGlosaCant: parseNum(cols[7])||0,
-      pctGlosaVal: parseNum(cols[8])||0,
-      aceptadoCant: parseNum(cols[9])||0,
-      aceptadoVal:  parseNum(cols[10])||0,
-      pctAcept:    parseNum(cols[11])||0,
-      valNoRec:   parseNum(cols[12])||0,
-      pctNoRec:   parseNum(cols[13])||0,
+      cuentasRad:   parseNum(r[2])||0,
+      valRad:       parseNum(r[3])||0,
+      cuentasGlos:  parseNum(r[4])||0,
+      variacion:    parseNum(r[5])||0,
+      valGlosa:     parseNum(r[6])||0,
+      pctGlosaCant: parseNum(r[7])||0,
+      pctGlosaVal:  parseNum(r[8])||0,
+      aceptadoCant: parseNum(r[9])||0,
+      aceptadoVal:  parseNum(r[10])||0,
+      pctAcept:     parseNum(r[11])||0,
+      valNoRec:     parseNum(r[12])||0,
+      pctNoRec:     parseNum(r[13])||0,
     };
     byYearMes[key] = row;
     if (!byYear[currentYear]) byYear[currentYear] = { anio:currentYear, rows:[], totRad:0, totGlosa:0, totAcept:0, totNoRec:0, totCuentas:0 };
@@ -756,23 +755,34 @@ function processSheet1(rows) {
 // Cols 3,6,9...36: cant mes | Cols 4,7,10...37: valor glosa | Cols 5,8,11...38: %
 // Col 39: TOTAL cant | Col 40: TOTAL GLOSA VIVA | Col 41: % TOTAL
 function processSheet2(rows) {
-  const byYearEnt = {};
-  let currentYear = null;
-  const MES_COLS = {};
-  MESES.forEach(function(m, idx) { MES_COLS[m] = 3 + idx * 3; });
+  var byYearEnt = {};
+  var currentYear = null;
+  // Índices FIJOS de columna (base 0) verificados contra el Excel real:
+  // Col 1=año, Col 2=entidad
+  // ENERO=col3(cant),col4(valor) | FEBRERO=col6,col7 | ... | DICIEMBRE=col36,col37
+  // TOTAL=col39(cant),col40(valor)
+  var MES_BASE = { // índice de la columna CANT de cada mes
+    'ENERO':9,'FEBRERO':6,'MARZO':9,'ABRIL':12,'MAYO':15,'JUNIO':18,
+    'JULIO':21,'AGOSTO':24,'SEPTIEMBRE':27,'OCTUBRE':30,'NOVIEMBRE':33,'DICIEMBRE':36
+  };
+  // Recalcular correctamente: ENERO=col3, FEBRERO=col6 ... DICIEMBRE=col36
+  MESES.forEach(function(m, idx) { MES_BASE[m] = 3 + idx * 3; });
 
-  for (let i = 0; i < rows.length; i++) {
-    const cols = Object.values(rows[i]);
+  for (var i = 0; i < rows.length; i++) {
+    // Usar el array directamente (XLSX header:1 devuelve array, no objeto)
+    var row = rows[i];
+    // row es array: row[0]=colA, row[1]=colB, row[2]=colC...
+    // Con sparse arrays, acceder por índice directo es seguro
 
-    // Detectar año en col 1
-    const col1 = cols[1];
+    // Detectar año en col 1 (colB)
+    var col1 = row[1];
     if (col1 !== null && col1 !== undefined && col1 !== '') {
-      const yr = parseInt(col1);
+      var yr = parseInt(col1);
       if (!isNaN(yr) && yr > 2015 && yr < 2100) currentYear = yr;
     }
 
-    // Ignorar fila cabecera y filas sin entidad
-    const col2 = cols[2] ? String(cols[2]).trim() : null;
+    // Entidad en col 2 (colC)
+    var col2 = row[2] ? String(row[2]).trim() : null;
     if (!col2 || col2 === '' || col2 === 'ENTIDAD') continue;
     if (!currentYear) continue;
 
@@ -780,17 +790,17 @@ function processSheet2(rows) {
     if (!byYearEnt[currentYear][col2]) byYearEnt[currentYear][col2] = {};
 
     MESES.forEach(function(mes) {
-      var c = MES_COLS[mes];
+      var c = MES_BASE[mes];
       byYearEnt[currentYear][col2][mes] = {
-        cant:  parseNum(cols[c]),
-        valor: parseNum(cols[c + 1]),
-        pct:   parseNum(cols[c + 2])
+        cant:  parseNum(row[c]),
+        valor: parseNum(row[c + 1]),
+        pct:   parseNum(row[c + 2])
       };
     });
     byYearEnt[currentYear][col2]['TOTAL'] = {
-      cant:  parseNum(cols[39]),
-      valor: parseNum(cols[40]),
-      pct:   parseNum(cols[41])
+      cant:  parseNum(row[39]),
+      valor: parseNum(row[40]),
+      pct:   parseNum(row[41])
     };
   }
   return { byYearEnt };

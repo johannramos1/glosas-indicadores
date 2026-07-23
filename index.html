@@ -657,95 +657,138 @@ function updateSBCard(ipsId) {
 // ═══════════════════════════════════════════════
 // EXCEL PROCESSING — HOJA 1
 // ═══════════════════════════════════════════════
-
-// parseNum: con raw:true XLSX entrega números directos
-// Solo necesitamos manejar el caso de strings con formato o valores inválidos
-function parseNum(v) {
-  if (v === null || v === undefined || v === '' || v === '#DIV/0!') return 0;
-  if (typeof v === 'number') return isNaN(v) ? 0 : v;
-  // String — limpiar y parsear
-  var s = String(v).trim().replace(/[$ ]/g,'').replace(/,/g,'');
-  var n = parseFloat(s);
-  return isNaN(n) ? 0 : n;
-}
-
+// Estructura (raw:true, header:1 → array nativo):
+// Fila cabecera: row[0]='AÑO', row[1]='MES', row[2]='CUENTAS RADICADAS'...
+// Fila datos:    row[0]=2017|null, row[1]='ENERO', row[2]=cant, row[3]=valRad...
 function processSheet1(rows) {
-  // Detectar fecha corte (fila 2, col B)
-  let cutoffStr = '—';
-  if (rows.length > 1) {
-    const fila2 = rows[1];
-    const v = Object.values(fila2)[1];
+  var cutoffStr = '—';
+  // Fecha corte en fila 2 (índice 1), col B (índice 1)
+  if (rows.length > 1 && rows[1] && rows[1][1] !== null && rows[1][1] !== undefined) {
+    var v = rows[1][1];
     try {
-      let d = null;
+      var d = null;
       if (v instanceof Date) { d = v; }
       else if (typeof v === 'number' && v > 40000 && v < 60000) {
-        // Serial de fecha Excel: días desde 1900-01-01
         d = new Date(Math.round((v - 25569) * 86400 * 1000));
-      } else if (typeof v === 'string') { d = new Date(v); }
+      } else { d = new Date(v); }
       if (d && !isNaN(d)) cutoffStr = d.toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'});
     } catch(e){}
   }
-  // Detectar fila de cabeceras (buscar "AÑO" en col 0)
-  let headerRow = -1;
-  for (let i=0; i<rows.length; i++) {
-    const r0 = rows[i][0];
-    if (r0 && String(r0).toUpperCase().includes('AÑO')) { headerRow = i; break; }
+
+  // Encontrar fila de cabecera (row[0] === 'AÑO')
+  var headerRow = -1;
+  for (var i = 0; i < rows.length; i++) {
+    if (rows[i] && rows[i][0] && String(rows[i][0]).toUpperCase().trim() === 'AÑO') {
+      headerRow = i; break;
+    }
   }
   if (headerRow < 0) return { cutoffStr, byYear:{}, byYearMes:{} };
 
-  const byYear = {}, byYearMes = {};
-  let currentYear = null;
+  var byYear = {}, byYearMes = {};
+  var currentYear = null;
 
-  for (let i = headerRow+1; i < rows.length; i++) {
-    const r = rows[i]; // array directo — índice = columna Excel real
-    if (!r || !Array.isArray(r)) continue;
-    if (r.every(v => v === null || v === undefined)) continue;
+  for (var i = headerRow + 1; i < rows.length; i++) {
+    var r = rows[i];
+    if (!r) continue;
 
-    // Detectar año en col 0 (colA)
-    const col0 = r[0];
-    if (col0 !== null && col0 !== undefined && col0 !== '') {
-      const yr = parseInt(col0);
+    // Col 0: año (solo en primera fila del año) o null
+    if (r[0] !== null && r[0] !== undefined && r[0] !== '') {
+      var yr = parseInt(r[0]);
       if (!isNaN(yr) && yr > 2000 && yr < 2100) currentYear = yr;
     }
-    const mes = r[1] ? String(r[1]).toUpperCase().trim() : null;
-    if (!mes || !MESES.includes(mes)) continue;
+
+    // Col 1: mes
+    var mes = r[1] ? String(r[1]).toUpperCase().trim() : null;
+    if (!mes || MESES.indexOf(mes) < 0) continue;
     if (!currentYear) continue;
 
-    const key = currentYear + '-' + String(MESES.indexOf(mes)+1).padStart(2,'0');
-    const row = {
-      anio: currentYear, mes, mesIdx: MESES.indexOf(mes),
-      cuentasRad:   parseNum(r[2])||0,
-      valRad:       parseNum(r[3])||0,
-      cuentasGlos:  parseNum(r[4])||0,
-      variacion:    parseNum(r[5])||0,
-      valGlosa:     parseNum(r[6])||0,
-      pctGlosaCant: parseNum(r[7])||0,
-      pctGlosaVal:  parseNum(r[8])||0,
-      aceptadoCant: parseNum(r[9])||0,
-      aceptadoVal:  parseNum(r[10])||0,
-      pctAcept:     parseNum(r[11])||0,
-      valNoRec:     parseNum(r[12])||0,
-      pctNoRec:     parseNum(r[13])||0,
+    var row = {
+      anio: currentYear, mes: mes, mesIdx: MESES.indexOf(mes),
+      cuentasRad:   parseNum(r[2]),
+      valRad:       parseNum(r[3]),
+      cuentasGlos:  parseNum(r[4]),
+      variacion:    parseNum(r[5]),
+      valGlosa:     parseNum(r[6]),
+      pctGlosaCant: parseNum(r[7]),
+      pctGlosaVal:  parseNum(r[8]),
+      aceptadoCant: parseNum(r[9]),
+      aceptadoVal:  parseNum(r[10]),
+      pctAcept:     parseNum(r[11]),
+      valNoRec:     parseNum(r[12]),
+      pctNoRec:     parseNum(r[13])
     };
+
+    var key = currentYear + '-' + String(MESES.indexOf(mes)+1).padStart(2,'0');
     byYearMes[key] = row;
     if (!byYear[currentYear]) byYear[currentYear] = { anio:currentYear, rows:[], totRad:0, totGlosa:0, totAcept:0, totNoRec:0, totCuentas:0 };
-    const y = byYear[currentYear];
+    var y = byYear[currentYear];
     y.rows.push(row);
-    y.totRad   += row.valRad;
-    y.totGlosa += row.valGlosa;
-    y.totAcept += row.aceptadoVal;
-    y.totNoRec += row.valNoRec;
+    y.totRad     += row.valRad;
+    y.totGlosa   += row.valGlosa;
+    y.totAcept   += row.aceptadoVal;
+    y.totNoRec   += row.valNoRec;
     y.totCuentas += row.cuentasRad;
   }
-  // Compute annual averages
-  Object.values(byYear).forEach(y => {
-    const n = y.rows.length || 1;
-    y.promPctGlosa = y.rows.reduce((s,r)=>s+r.pctGlosaVal,0)/n;
-    y.promPctNoRec = y.rows.reduce((s,r)=>s+r.pctNoRec,0)/n;
+
+  Object.values(byYear).forEach(function(y) {
+    var n = y.rows.length || 1;
+    y.promPctGlosa  = y.rows.reduce(function(s,r){return s+r.pctGlosaVal;},0)/n;
+    y.promPctNoRec  = y.rows.reduce(function(s,r){return s+r.pctNoRec;},0)/n;
     y.pctGlosaAnual = y.totRad > 0 ? y.totGlosa/y.totRad : 0;
     y.pctNoRecAnual = y.totRad > 0 ? y.totNoRec/y.totRad : 0;
   });
-  return { cutoffStr, byYear, byYearMes };
+
+  return { cutoffStr: cutoffStr, byYear: byYear, byYearMes: byYearMes };
+}
+
+// ═══════════════════════════════════════════════
+// EXCEL PROCESSING — HOJA 2
+// ═══════════════════════════════════════════════
+// Estructura (raw:true, header:1 → array nativo):
+// Cabecera: row[2]='ENTIDAD', row[3]='ENERO', row[4]='GLOSA VIVA'...
+// Datos:    row[1]=año|null, row[2]=nombreEntidad, row[3]=cant, row[4]=valor...
+// ENERO:col3+4 | FEB:col6+7 | MAR:col9+10 | ABR:col12+13 | MAY:col15+16
+// JUN:col18+19 | JUL:col21+22 | AGO:col24+25 | SEP:col27+28 | OCT:col30+31
+// NOV:col33+34 | DIC:col36+37 | TOTAL:col39+40
+function processSheet2(rows) {
+  var byYearEnt = {};
+  var currentYear = null;
+  // Índice de columna CANT para cada mes (valor = cant+1)
+  var MES_CANT_COL = [3,6,9,12,15,18,21,24,27,30,33,36]; // ENERO..DICIEMBRE
+
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    if (!r) continue;
+
+    // Col 1: año (solo primera fila del bloque)
+    if (r[1] !== null && r[1] !== undefined && r[1] !== '') {
+      var yr = parseInt(r[1]);
+      if (!isNaN(yr) && yr > 2015 && yr < 2100) currentYear = yr;
+    }
+
+    // Col 2: entidad — ignorar cabecera y totales
+    var col2 = r[2] ? String(r[2]).trim() : null;
+    if (!col2 || col2 === 'ENTIDAD') continue;
+    if (!currentYear) continue;
+
+    if (!byYearEnt[currentYear]) byYearEnt[currentYear] = {};
+    if (!byYearEnt[currentYear][col2]) byYearEnt[currentYear][col2] = {};
+
+    MESES.forEach(function(mes, idx) {
+      var c = MES_CANT_COL[idx];
+      byYearEnt[currentYear][col2][mes] = {
+        cant:  parseNum(r[c]),
+        valor: parseNum(r[c + 1]),
+        pct:   parseNum(r[c + 2])
+      };
+    });
+    byYearEnt[currentYear][col2]['TOTAL'] = {
+      cant:  parseNum(r[39]),
+      valor: parseNum(r[40]),
+      pct:   parseNum(r[41])
+    };
+  }
+  return { byYearEnt: byYearEnt };
 }
 
 // ═══════════════════════════════════════════════
@@ -923,10 +966,6 @@ window.doLoad = async function(ipsId) {
       const rows1 = XLSX.utils.sheet_to_json(ws1, { header:1, defval:null, raw:true });
       const rows2 = XLSX.utils.sheet_to_json(ws2, { header:1, defval:null, raw:true });
 
-      // Pasar arrays directamente — raw:true devuelve arrays nativos
-      // DIAGNÓSTICO TEMPORAL
-      console.log('Tipo fila 8 H1:', typeof rows1[7], Array.isArray(rows1[7]), JSON.stringify(rows1[7]));
-      console.log('Tipo fila 5 H2:', typeof rows2[4], Array.isArray(rows2[4]), JSON.stringify(rows2[4]));
       const sheet1 = processSheet1(rows1);
       const sheet2 = processSheet2(rows2);
 

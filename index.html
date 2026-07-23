@@ -521,16 +521,11 @@ async function doLogin() {
   if (!user || !pass) { err.textContent = 'Complete usuario y contraseña.'; err.style.display = 'block'; return; }
   btn.textContent = 'Verificando...'; btn.disabled = true;
   try {
-    const rows = await sbG('usuarios', 'usuario=eq.'+encodeURIComponent(user)+'&activo=eq.true&select=id,nombre,usuario,clave');
+    const rows = await sbG('usuarios', 'usuario=eq.'+encodeURIComponent(user)+'&activo=eq.true&select=id,nombre,usuario,clave,rol');
     const match = rows.find(r => r.clave === pass);
     try { await sbU('accesos_log', [{ usuario:user, exitoso:!!match, sistema:SISTEMA }]); } catch(e){}
     if (match) {
-      // Rol por convención de username: no depende de columna rol en Supabase
-      const u = match.usuario.toLowerCase();
-      const rol = (u === 'admin' || u === 'johann' || u === 'jsramos') ? 'admin'
-                : (u.includes('gerencia') || u.includes('jenifer') || u.includes('jcleves')) ? 'gerencia'
-                : 'viewer';
-      SESSION_USER = { id:match.id, nombre:match.nombre, usuario:match.usuario, rol };
+      SESSION_USER = { id:match.id, nombre:match.nombre, usuario:match.usuario, rol: match.rol||'viewer' };
       sessionStorage.setItem('glosas_session', JSON.stringify(SESSION_USER));
       initApp();
     } else {

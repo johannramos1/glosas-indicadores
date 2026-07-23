@@ -657,6 +657,39 @@ function updateSBCard(ipsId) {
 // ═══════════════════════════════════════════════
 // EXCEL PROCESSING — HOJA 1
 // ═══════════════════════════════════════════════
+
+// parseNum: convierte cualquier valor numérico del Excel a float
+// XLSX con raw:false puede devolver "1.234.567,89" o "1234567.89" o número directo
+function parseNum(v) {
+  if (v === null || v === undefined || v === '' || v === '#DIV/0!') return 0;
+  if (typeof v === 'number') return v;
+  // Quitar espacios, símbolos de moneda, y manejar formatos colombianos
+  var s = String(v).trim().replace(/[$ ]/g,'');
+  // Formato colombiano: puntos como miles, coma como decimal
+  // Ej: "1.234.567,89" → 1234567.89
+  if (s.indexOf(',') > -1 && s.indexOf('.') > -1) {
+    // Si la coma viene después del último punto: es decimal colombiano
+    if (s.lastIndexOf(',') > s.lastIndexOf('.')) {
+      s = s.replace(/\./g,'').replace(',','.');
+    } else {
+      s = s.replace(/,/g,'');
+    }
+  } else if (s.indexOf(',') > -1) {
+    // Solo coma — puede ser decimal europeo
+    s = s.replace(',','.');
+  } else {
+    // Solo puntos — son separadores de miles
+    // Verificar: si hay más de un punto o el punto no está en posición decimal
+    var parts = s.split('.');
+    if (parts.length > 2) s = s.replace(/\./g,''); // múltiples puntos = miles
+    else if (parts.length === 2 && parts[1].length !== 2 && parts[1].length !== 1) {
+      s = s.replace(/\./g,''); // punto como separador de miles
+    }
+  }
+  var n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+
 function processSheet1(rows) {
   // Detectar fecha corte (fila 2, col B)
   let cutoffStr = '—';
@@ -697,18 +730,18 @@ function processSheet1(rows) {
     const key = currentYear + '-' + String(MESES.indexOf(mes)+1).padStart(2,'0');
     const row = {
       anio: currentYear, mes, mesIdx: MESES.indexOf(mes),
-      cuentasRad: parseFloat(cols[2])||0,
-      valRad:     parseFloat(cols[3])||0,
-      cuentasGlos: parseFloat(cols[4])||0,
-      variacion:  parseFloat(cols[5])||0,
-      valGlosa:   parseFloat(cols[6])||0,
-      pctGlosaCant: parseFloat(cols[7])||0,
-      pctGlosaVal: parseFloat(cols[8])||0,
-      aceptadoCant: parseFloat(cols[9])||0,
-      aceptadoVal:  parseFloat(cols[10])||0,
-      pctAcept:    parseFloat(cols[11])||0,
-      valNoRec:   parseFloat(cols[12])||0,
-      pctNoRec:   parseFloat(cols[13])||0,
+      cuentasRad: parseNum(cols[2])||0,
+      valRad:     parseNum(cols[3])||0,
+      cuentasGlos: parseNum(cols[4])||0,
+      variacion:  parseNum(cols[5])||0,
+      valGlosa:   parseNum(cols[6])||0,
+      pctGlosaCant: parseNum(cols[7])||0,
+      pctGlosaVal: parseNum(cols[8])||0,
+      aceptadoCant: parseNum(cols[9])||0,
+      aceptadoVal:  parseNum(cols[10])||0,
+      pctAcept:    parseNum(cols[11])||0,
+      valNoRec:   parseNum(cols[12])||0,
+      pctNoRec:   parseNum(cols[13])||0,
     };
     byYearMes[key] = row;
     if (!byYear[currentYear]) byYear[currentYear] = { anio:currentYear, rows:[], totRad:0, totGlosa:0, totAcept:0, totNoRec:0, totCuentas:0 };
@@ -775,15 +808,15 @@ function processSheet2(rows) {
     mesHeaders.forEach(({ mes, c }) => {
       if (mes === 'TOTAL') {
         byYearEnt[currentYear][entidad]['TOTAL'] = {
-          cant: parseFloat(cols[c])||0,
-          valor: parseFloat(cols[c+1])||0,
-          pct:  parseFloat(cols[c+2])||0
+          cant: parseNum(cols[c])||0,
+          valor: parseNum(cols[c1])||0,
+          pct:  parseNum(cols[c2])||0
         };
       } else {
         byYearEnt[currentYear][entidad][mes] = {
-          cant:  parseFloat(cols[c])||0,
-          valor: parseFloat(cols[c+1])||0,
-          pct:   parseFloat(cols[c+2])||0
+          cant:  parseNum(cols[c])||0,
+          valor: parseNum(cols[c1])||0,
+          pct:   parseNum(cols[c2])||0
         };
       }
     });

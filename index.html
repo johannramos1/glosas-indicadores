@@ -797,6 +797,101 @@ function processSheet2(rows) {
 }
 
 // ═══════════════════════════════════════════════
+// VALIDACIÓN CRUZADA HOJAS 1 vs 2 (MALLA BLOQUEANTE)
+// ═══════════════════════════════════════════════
+function validateCrossSheet(sheet1, sheet2) {
+  var TOLERANCIA = 1;
+  var errores = [];
+  var years = Object.keys(sheet1.byYear);
+  for (var yi = 0; yi < years.length; yi++) {
+    var year = parseInt(years[yi]);
+    var yData = sheet1.byYear[year];
+    var h2year = sheet2.byYearEnt[year];
+    var h1totAnio = yData.totGlosa || 0;
+    if (!h2year && h1totAnio > 0) {
+      errores.push({ tipo:'AÑO_FALTANTE', anio:year, mes:null, h1:h1totAnio, h2:0, diff:h1totAnio });
+      continue;
+    }
+    if (!h2year) continue;
+    var rows = yData.rows || [];
+    for (var ri = 0; ri < rows.length; ri++) {
+      var row = rows[ri];
+      var mes = row.mes;
+      var h1val = row.valGlosa || 0;
+      var h2val = 0;
+      var ents = Object.keys(h2year);
+      for (var ei = 0; ei < ents.length; ei++) {
+        var mData = h2year[ents[ei]][mes];
+        if (mData) h2val += mData.valor || 0;
+      }
+      var diff = Math.abs(h2val - h1val);
+      if (diff > TOLERANCIA) {
+        errores.push({ tipo:'DIFERENCIA_MES', anio:year, mes:mes, h1:h1val, h2:h2val, diff:h2val-h1val });
+      }
+    }
+  }
+  return errores;
+}
+
+function renderValidationError(errores, ipsId) {
+  var ips = ipsStore[ipsId];
+  var btn = document.getElementById('btn-'+ipsId);
+  if (btn) { btn.textContent = 'Actualizar'; btn.disabled = false; }
+
+  var filas = '';
+  errores.forEach(function(e) {
+    var diffStr = e.diff >= 0
+      ? '+$ ' + Math.round(e.diff).toLocaleString('es-CO')
+      : '-$ ' + Math.round(Math.abs(e.diff)).toLocaleString('es-CO');
+    var tipo = e.tipo === 'AÑO_FALTANTE' ? 'Año sin datos en H2' : 'Diferencia por mes';
+    filas += '<tr>' +
+      '<td style="padding:7px 12px;font-weight:600">' + e.anio + '</td>' +
+      '<td style="padding:7px 12px">' + (e.mes || '(total año)') + '</td>' +
+      '<td style="padding:7px 12px;font-family:monospace;text-align:right">$ ' + Math.round(e.h1).toLocaleString('es-CO') + '</td>' +
+      '<td style="padding:7px 12px;font-family:monospace;text-align:right">$ ' + Math.round(e.h2).toLocaleString('es-CO') + '</td>' +
+      '<td style="padding:7px 12px;font-family:monospace;text-align:right;font-weight:700;color:#dc2626">' + diffStr + '</td>' +
+      '<td style="padding:7px 12px;font-size:11px;color:#7f1d1d">' + tipo + '</td>' +
+    '</tr>';
+  });
+
+  var modal = document.createElement('div');
+  modal.id = 'validation-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  modal.innerHTML =
+    '<div style="background:#fff;border-radius:16px;width:min(820px,95vw);max-height:85vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.35)">' +
+      '<div style="background:#dc2626;padding:16px 24px;flex-shrink:0">' +
+        '<div style="color:#fff;font-size:16px;font-weight:700">Cargue bloqueado — Malla de validación fallida</div>' +
+        '<div style="color:#fecaca;font-size:12px;margin-top:3px">' + ips.name + ' · ' + errores.length + ' diferencia(s) entre Hoja 1 y Hoja 2</div>' +
+      '</div>' +
+      '<div style="padding:20px 24px;overflow-y:auto;flex:1">' +
+        '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:14px 18px;margin-bottom:18px">' +
+          '<div style="font-size:13px;font-weight:700;color:#7f1d1d;margin-bottom:6px">Condición obligatoria no cumplida</div>' +
+          '<div style="font-size:12px;color:#991b1b;line-height:1.7">La suma de <strong>Glosa (col. G — Hoja 1)</strong> de cada mes debe ser <strong>exactamente igual</strong> a la suma de <strong>Glosa Viva por entidad (Hoja 2)</strong> para el mismo mes y año.<br>Corrija las diferencias en el archivo Excel y vuelva a cargarlo.</div>' +
+        '</div>' +
+        '<div style="font-size:13px;font-weight:700;color:#111827;margin-bottom:10px">Detalle de diferencias</div>' +
+        '<div style="overflow-x:auto;border-radius:8px;border:1px solid #e5e7eb">' +
+          '<table style="width:100%;border-collapse:collapse;font-size:13px">' +
+            '<thead><tr style="background:#f9fafb">' +
+              '<th style="padding:8px 12px;text-align:left;font-size:11px;color:#6b7280;border-bottom:1px solid #e5e7eb">AÑO</th>' +
+              '<th style="padding:8px 12px;text-align:left;font-size:11px;color:#6b7280;border-bottom:1px solid #e5e7eb">MES</th>' +
+              '<th style="padding:8px 12px;text-align:right;font-size:11px;color:#1d6ca8;border-bottom:1px solid #e5e7eb">GLOSA H1 (col G)</th>' +
+              '<th style="padding:8px 12px;text-align:right;font-size:11px;color:#6d28d9;border-bottom:1px solid #e5e7eb">SUMA H2 (entidades)</th>' +
+              '<th style="padding:8px 12px;text-align:right;font-size:11px;color:#dc2626;border-bottom:1px solid #e5e7eb">DIFERENCIA</th>' +
+              '<th style="padding:8px 12px;text-align:left;font-size:11px;color:#6b7280;border-bottom:1px solid #e5e7eb">TIPO</th>' +
+            '</tr></thead>' +
+            '<tbody>' + filas + '</tbody>' +
+          '</table>' +
+        '</div>' +
+      '</div>' +
+      '<div style="padding:14px 24px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;background:#fafafa">' +
+        '<div style="font-size:12px;color:#6b7280">El cargue NO fue registrado. Corrija el Excel y vuelva a intentarlo.</div>' +
+        '<button onclick="document.getElementById(&quot;validation-modal&quot;).remove()" style="padding:9px 20px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Entendido — Cerrar</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(modal);
+}
+
+// ═══════════════════════════════════════════════
 // FILE LOAD
 // ═══════════════════════════════════════════════
 window.doLoad = async function(ipsId) {

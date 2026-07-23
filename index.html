@@ -521,11 +521,16 @@ async function doLogin() {
   if (!user || !pass) { err.textContent = 'Complete usuario y contraseña.'; err.style.display = 'block'; return; }
   btn.textContent = 'Verificando...'; btn.disabled = true;
   try {
-    const rows = await sbG('usuarios', 'usuario=eq.'+encodeURIComponent(user)+'&activo=eq.true&select=id,nombre,usuario,clave,rol');
+    const rows = await sbG('usuarios', 'usuario=eq.'+encodeURIComponent(user)+'&activo=eq.true&select=id,nombre,usuario,clave');
     const match = rows.find(r => r.clave === pass);
     try { await sbU('accesos_log', [{ usuario:user, exitoso:!!match, sistema:SISTEMA }]); } catch(e){}
     if (match) {
-      SESSION_USER = { id:match.id, nombre:match.nombre, usuario:match.usuario, rol:match.rol||'viewer' };
+      // Rol por convención de username: no depende de columna rol en Supabase
+      const u = match.usuario.toLowerCase();
+      const rol = (u === 'admin' || u === 'johann' || u === 'jsramos') ? 'admin'
+                : (u.includes('gerencia') || u.includes('jenifer') || u.includes('jcleves')) ? 'gerencia'
+                : 'viewer';
+      SESSION_USER = { id:match.id, nombre:match.nombre, usuario:match.usuario, rol };
       sessionStorage.setItem('glosas_session', JSON.stringify(SESSION_USER));
       initApp();
     } else {
@@ -840,68 +845,69 @@ function renderValidationError(errores, ipsId) {
   const btn = document.getElementById('btn-'+ipsId);
   if (btn) { btn.textContent = 'Actualizar'; btn.disabled = false; }
 
-  // Construir tabla de diferencias
-  const filas = errores.map(e => {
-    const diffStr = e.diff >= 0 ? '+$ '+Math.round(e.diff).toLocaleString('es-CO') : '-$ '+Math.round(Math.abs(e.diff)).toLocaleString('es-CO');
+  let filas = '';
+  errores.forEach(function(e) {
+    const diffStr = e.diff >= 0
+      ? '+$ ' + Math.round(e.diff).toLocaleString('es-CO')
+      : '-$ ' + Math.round(Math.abs(e.diff)).toLocaleString('es-CO');
     const tipo = e.tipo === 'AÑO_FALTANTE' ? 'Año sin datos en H2' : 'Diferencia por mes';
-    return \`<tr>
-      <td style="padding:7px 12px;font-weight:600">\${e.anio}</td>
-      <td style="padding:7px 12px">\${e.mes || '(total año)'}</td>
-      <td style="padding:7px 12px;font-family:'DM Mono',monospace;text-align:right">$ \${Math.round(e.h1).toLocaleString('es-CO')}</td>
-      <td style="padding:7px 12px;font-family:'DM Mono',monospace;text-align:right">$ \${Math.round(e.h2).toLocaleString('es-CO')}</td>
-      <td style="padding:7px 12px;font-family:'DM Mono',monospace;text-align:right;font-weight:700;color:#dc2626">\${diffStr}</td>
-      <td style="padding:7px 12px;font-size:11px;color:#7f1d1d">\${tipo}</td>
-    </tr>\`;
-  }).join('');
+    filas += '<tr>' +
+      '<td style="padding:7px 12px;font-weight:600">' + e.anio + '</td>' +
+      '<td style="padding:7px 12px">' + (e.mes || '(total año)') + '</td>' +
+      '<td style="padding:7px 12px;font-family:\'DM Mono\',monospace;text-align:right">$ ' + Math.round(e.h1).toLocaleString('es-CO') + '</td>' +
+      '<td style="padding:7px 12px;font-family:\'DM Mono\',monospace;text-align:right">$ ' + Math.round(e.h2).toLocaleString('es-CO') + '</td>' +
+      '<td style="padding:7px 12px;font-family:\'DM Mono\',monospace;text-align:right;font-weight:700;color:#dc2626">' + diffStr + '</td>' +
+      '<td style="padding:7px 12px;font-size:11px;color:#7f1d1d">' + tipo + '</td>' +
+    '</tr>';
+  });
 
   const modal = document.createElement('div');
   modal.id = 'validation-modal';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;';
-  modal.innerHTML = \`
-  <div style="background:#fff;border-radius:16px;width:min(820px,95vw);max-height:85vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.35)">
-    <div style="background:#dc2626;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
-      <div>
-        <div style="color:#fff;font-size:16px;font-weight:700">🚫 Cargue bloqueado — Malla de validación fallida</div>
-        <div style="color:#fecaca;font-size:12px;margin-top:3px">\${ips.name} · \${errores.length} diferencia(s) detectada(s) entre Hoja 1 y Hoja 2</div>
-      </div>
-    </div>
-    <div style="padding:20px 24px;overflow-y:auto;flex:1">
-      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:14px 18px;margin-bottom:18px">
-        <div style="font-size:13px;font-weight:700;color:#7f1d1d;margin-bottom:6px">Condición obligatoria no cumplida</div>
-        <div style="font-size:12px;color:#991b1b;line-height:1.7">
-          La suma de <strong>Glosa (col. G — Hoja 1)</strong> de cada mes debe ser <strong>exactamente igual</strong>
-          a la suma de <strong>Glosa Viva por entidad (Hoja 2)</strong> para el mismo mes y año.<br>
-          Corrija las diferencias en el archivo Excel y vuelva a cargarlo.
-        </div>
-      </div>
-      <div style="font-size:13px;font-weight:700;color:var(--text-dark);margin-bottom:10px">Detalle de diferencias</div>
-      <div style="overflow-x:auto;border-radius:8px;border:1px solid var(--border)">
-        <table style="width:100%;border-collapse:collapse;font-size:13px">
-          <thead>
-            <tr style="background:#f9fafb">
-              <th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text-light);border-bottom:1px solid var(--border)">AÑO</th>
-              <th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text-light);border-bottom:1px solid var(--border)">MES</th>
-              <th style="padding:8px 12px;text-align:right;font-size:11px;color:#1d6ca8;border-bottom:1px solid var(--border)">GLOSA H1 (col G)</th>
-              <th style="padding:8px 12px;text-align:right;font-size:11px;color:#6d28d9;border-bottom:1px solid var(--border)">SUMA H2 (entidades)</th>
-              <th style="padding:8px 12px;text-align:right;font-size:11px;color:#dc2626;border-bottom:1px solid var(--border)">DIFERENCIA</th>
-              <th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text-light);border-bottom:1px solid var(--border)">TIPO</th>
-            </tr>
-          </thead>
-          <tbody>\${filas}</tbody>
-        </table>
-      </div>
-    </div>
-    <div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;background:#fafafa">
-      <div style="font-size:12px;color:var(--text-light)">El cargue NO fue registrado. Corrija el Excel y vuelva a intentarlo.</div>
-      <button onclick="document.getElementById('validation-modal').remove()"
-        style="padding:9px 20px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">
-        Entendido — Cerrar
-      </button>
-    </div>
-  </div>\`;
+  modal.innerHTML =
+    '<div style="background:#fff;border-radius:16px;width:min(820px,95vw);max-height:85vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.35)">' +
+      '<div style="background:#dc2626;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">' +
+        '<div>' +
+          '<div style="color:#fff;font-size:16px;font-weight:700">\uD83D\uDEAB Cargue bloqueado \u2014 Malla de validaci\u00f3n fallida</div>' +
+          '<div style="color:#fecaca;font-size:12px;margin-top:3px">' + ips.name + ' \u00b7 ' + errores.length + ' diferencia(s) detectada(s) entre Hoja 1 y Hoja 2</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="padding:20px 24px;overflow-y:auto;flex:1">' +
+        '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:14px 18px;margin-bottom:18px">' +
+          '<div style="font-size:13px;font-weight:700;color:#7f1d1d;margin-bottom:6px">Condici\u00f3n obligatoria no cumplida</div>' +
+          '<div style="font-size:12px;color:#991b1b;line-height:1.7">' +
+            'La suma de <strong>Glosa (col. G \u2014 Hoja 1)</strong> de cada mes debe ser <strong>exactamente igual</strong> ' +
+            'a la suma de <strong>Glosa Viva por entidad (Hoja 2)</strong> para el mismo mes y a\u00f1o.<br>' +
+            'Corrija las diferencias en el archivo Excel y vuelva a cargarlo.' +
+          '</div>' +
+        '</div>' +
+        '<div style="font-size:13px;font-weight:700;color:#111827;margin-bottom:10px">Detalle de diferencias</div>' +
+        '<div style="overflow-x:auto;border-radius:8px;border:1px solid #e5e7eb">' +
+          '<table style="width:100%;border-collapse:collapse;font-size:13px">' +
+            '<thead>' +
+              '<tr style="background:#f9fafb">' +
+                '<th style="padding:8px 12px;text-align:left;font-size:11px;color:#6b7280;border-bottom:1px solid #e5e7eb">A\u00d1O</th>' +
+                '<th style="padding:8px 12px;text-align:left;font-size:11px;color:#6b7280;border-bottom:1px solid #e5e7eb">MES</th>' +
+                '<th style="padding:8px 12px;text-align:right;font-size:11px;color:#1d6ca8;border-bottom:1px solid #e5e7eb">GLOSA H1 (col G)</th>' +
+                '<th style="padding:8px 12px;text-align:right;font-size:11px;color:#6d28d9;border-bottom:1px solid #e5e7eb">SUMA H2 (entidades)</th>' +
+                '<th style="padding:8px 12px;text-align:right;font-size:11px;color:#dc2626;border-bottom:1px solid #e5e7eb">DIFERENCIA</th>' +
+                '<th style="padding:8px 12px;text-align:left;font-size:11px;color:#6b7280;border-bottom:1px solid #e5e7eb">TIPO</th>' +
+              '</tr>' +
+            '</thead>' +
+            '<tbody>' + filas + '</tbody>' +
+          '</table>' +
+        '</div>' +
+      '</div>' +
+      '<div style="padding:14px 24px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;background:#fafafa">' +
+        '<div style="font-size:12px;color:#6b7280">El cargue NO fue registrado. Corrija el Excel y vuelva a intentarlo.</div>' +
+        '<button onclick="document.getElementById(\'validation-modal\').remove()" ' +
+          'style="padding:9px 20px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">' +
+          'Entendido \u2014 Cerrar' +
+        '</button>' +
+      '</div>' +
+    '</div>';
   document.body.appendChild(modal);
 }
-
 // ═══════════════════════════════════════════════
 // FILE LOAD
 // ═══════════════════════════════════════════════
@@ -1107,7 +1113,7 @@ function renderResumen() {
           <div style="font-size:14px;font-weight:700;color:var(--text-dark)">Año en curso: ${curYear}</div>
           <div style="font-size:12px;color:var(--text-light)">${curY.rows ? curY.rows.length : 0} meses con datos</div>
         </div>
-        ${prevY ? `<div style="font-size:12px;color:var(--text-light)">vs ${prevYear}: Glosa ${fmtPct(prevY.pctGlosaAnual||0)}</div>` : ''}
+        ${prevY ? '<div style="font-size:12px;color:var(--text-light)">vs ' + prevYear + ': Glosa ' + fmtPct(prevY.pctGlosaAnual||0) + '</div>' : ''}
       </div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
         <div>
@@ -1164,8 +1170,7 @@ function renderResumen() {
     const gViva = Math.max(0, d.totGlosa - d.totAcept);
     const isCurrent = y === curYear;
     totRad_t+=d.totRad; totGlo_t+=d.totGlosa; totRec_t+=d.totAcept; totNoRec_t+=d.totNoRec; totCue_t+=d.totCuentas;
-    html += `<tr ${isCurrent?'style="background:#f0faf3;"':''}>
-      <td><strong>${y}</strong>${isCurrent?' <span class="badge badge-green">Actual</span>':''}</td>
+    html += '<tr'+(isCurrent?' style="background:#f0faf3;"':'')+'>\n      <td><strong>'+y+'</strong>'+(isCurrent?' <span class="badge badge-green">Actual</span>':'')+' </td>'
       <td class="mono">${fmtCOP(d.totRad)}</td>
       <td class="mono" style="color:var(--c-glosa-ini)">${fmtCOP(d.totGlosa)}</td>
       <td>${pG>0.3?'<span class="badge badge-red">':'<span class="badge '+(pG>0.1?'badge-amber':'badge-green')+'">'} ${fmtPct(pG)}</span></td>
@@ -1278,7 +1283,7 @@ function renderMensual() {
   <div class="filter-bar">
     <label style="font-size:12px;font-weight:600;color:var(--text-light)">Año:</label>
     <select class="fsel" id="filter-year-mensual" onchange="renderMensual()">
-      ${years.map(y=>`<option value="${y}" ${y===filterYear?'selected':''}>${y}</option>`).join('')}
+      ${years.map(function(y){return '<option value="'+y+'"'+(y===filterYear?' selected':'')+'>'+y+'</option>';}).join('')}
     </select>
   </div>`;
 
@@ -1363,7 +1368,7 @@ function renderEntidades() {
   <div class="filter-bar">
     <label style="font-size:12px;font-weight:600;color:var(--text-light)">Año:</label>
     <select class="fsel" id="filter-year-ent" onchange="renderEntidades()">
-      ${years.map(y=>`<option value="${y}" ${y===filterYear?'selected':''}>${y}</option>`).join('')}
+      ${years.map(function(y){return '<option value="'+y+'"'+(y===filterYear?' selected':'')+'>'+y+'</option>';}).join('')}
     </select>
   </div>`;
 
@@ -1444,7 +1449,7 @@ function renderEntidades() {
     <div style="overflow-x:auto"><table>
       <thead><tr>
         <th style="text-align:left">ENTIDAD</th>
-        ${MESES.slice(0,12).map(m=>`<th style="font-size:9px">${m.substring(0,3)}</th>`).join('')}
+        ${MESES.slice(0,12).map(function(m){return '<th style="font-size:9px">'+m.substring(0,3)+'</th>';}).join('')}
         <th style="color:var(--c-glosa-viva)">TOTAL</th>
       </tr></thead>
       <tbody>`;
@@ -1457,7 +1462,7 @@ function renderEntidades() {
       ${MESES.map(m => {
         const mv = mData[m];
         const v = mv ? mv.valor : 0;
-        return `<td class="mono" style="font-size:11px;${v>0?'color:var(--c-glosa-viva)':''}">${v>0?fmtCOP(v):'—'}</td>`;
+        return '<td class="mono" style="font-size:11px;'+(v>0?'color:var(--c-glosa-viva)':'')+'">'+( v>0?fmtCOP(v):'—')+'</td>';
       }).join('')}
       <td class="mono" style="color:var(--c-glosa-viva);font-weight:700">${fmtCOP(e.valor)}</td>
     </tr>`;
@@ -1657,7 +1662,7 @@ function buildComparativoUI(ipsId, snaps) {
   const yearFilter = COMP_STATE.yearFilter || (years.length ? years[years.length-1] : null);
 
   // Selector de año para el comparativo
-  const yearOpts = years.map(y => `<option value="${y}" ${y==yearFilter?'selected':''}>${y}</option>`).join('');
+  const yearOpts = years.map(function(y){return '<option value="'+y+'"'+(y==yearFilter?' selected':'')+'>'+y+'</option>';}).join('');
 
   let html = `
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
@@ -1693,7 +1698,7 @@ function buildComparativoUI(ipsId, snaps) {
         const isB = COMP_STATE.snapB && COMP_STATE.snapB.id === s.id;
         const hasYearData = s.data && s.data.byYear && s.data.byYear[yearFilter];
         const savedFmt = new Date(s.saved_at).toLocaleString('es-CO',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
-        return `<div class="snap-item ${isA?'selected-a':''} ${isB?'selected-b':''} ${!hasYearData?'':'hover'}"
+        return '<div class="snap-item '+(isA?'selected-a':'')+(isB?' selected-b':'')+(!hasYearData?'':' hover')+'"'
           onclick="compSelectSnap(${i})"
           title="${hasYearData?'':'Sin datos para '+yearFilter+' en este corte'}">
           <div>
@@ -2094,10 +2099,10 @@ function buildConfigUI() {
           <div style="width:9px;height:9px;border-radius:50%;background:${isLoaded?'#22c55e':'#d1d5db'}"></div>
           <div class="admin-card-title" style="color:${colorMain}">${s.name}</div>
         </div>
-        ${isLoaded ? `<span style="font-size:11px;color:var(--text-light)">Corte: ${s.cutoff}</span>` : ''}
+        ${isLoaded ? '<span style="font-size:11px;color:var(--text-light)">Corte: '+s.cutoff+'</span>' : ''}
       </div>
       <div class="admin-card-body">
-        ${isLoaded ? `<div style="font-size:12px;color:var(--text-light);margin-bottom:12px">Última actualización: ${s.loadedAt}</div>` : ''}
+        ${isLoaded ? '<div style="font-size:12px;color:var(--text-light);margin-bottom:12px">Última actualización: '+s.loadedAt+'</div>' : ''}
         <div style="margin-bottom:10px">
           <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">Fecha de corte (opcional)</label>
           <input type="date" id="cutoff-${ipsId}" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif">
@@ -2142,14 +2147,15 @@ async function cargarUsuarios() {
     if (!users.length) { el.innerHTML='<div class="empty"><div class="empty-txt">Sin usuarios creados.</div></div>'; return; }
     el.innerHTML = `<table>
       <thead><tr><th style="text-align:left">Nombre</th><th style="text-align:left">Usuario</th><th style="text-align:left">Rol</th><th>Estado</th><th>Creado</th></tr></thead>
-      <tbody>${users.map(u=>`<tr>
-        <td style="font-weight:500">${u.nombre}</td>
-        <td style="font-family:var(--mono);font-size:12px">${u.usuario}</td>
-        <td><span class="badge ${u.rol==='admin'?'badge-blue':'badge-green'}">${u.rol||'viewer'}</span></td>
-        <td><span class="badge ${u.activo?'badge-green':'badge-red'}">${u.activo?'Activo':'Inactivo'}</span></td>
-        <td style="font-size:12px;color:var(--text-light)">${new Date(u.created_at).toLocaleDateString('es-CO')}</td>
-      </tr>`).join('')}
-      </tbody>
+      <tbody>'+users.map(function(u){
+        return '<tr>'+
+          '<td style="font-weight:500">'+u.nombre+'</td>'+
+          '<td style="font-family:var(--mono);font-size:12px">'+u.usuario+'</td>'+
+          '<td><span class="badge '+(u.rol==='admin'?'badge-blue':'badge-green')+'">'+(u.rol||'viewer')+'</span></td>'+
+          '<td><span class="badge '+(u.activo?'badge-green':'badge-red')+'">'+(u.activo?'Activo':'Inactivo')+'</span></td>'+
+          '<td style="font-size:12px;color:var(--text-light)">'+new Date(u.created_at).toLocaleDateString('es-CO')+'</td>'+
+        '</tr>';
+      }).join('')+'</tbody>
     </table>`;
   } catch(e) { console.warn('Error cargando usuarios:', e.message); }
 }

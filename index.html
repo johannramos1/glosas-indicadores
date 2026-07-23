@@ -655,6 +655,17 @@ function updateSBCard(ipsId) {
 }
 
 // ═══════════════════════════════════════════════
+// UTILIDADES DE PARSEO
+// ═══════════════════════════════════════════════
+function parseNum(v) {
+  if (v === null || v === undefined || v === '' || v === '#DIV/0!') return 0;
+  if (typeof v === 'number') return isNaN(v) ? 0 : v;
+  var s = String(v).trim().replace(/[$ ]/g,'').replace(/,/g,'');
+  var n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+
+// ═══════════════════════════════════════════════
 // EXCEL PROCESSING — HOJA 1
 // ═══════════════════════════════════════════════
 // Estructura (raw:true, header:1 → array nativo):

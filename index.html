@@ -751,190 +751,51 @@ function processSheet1(rows) {
 // ═══════════════════════════════════════════════
 // EXCEL PROCESSING — HOJA 2
 // ═══════════════════════════════════════════════
+// Estructura real (raw:true):
+// Col 0: vacío | Col 1: año (primera fila del bloque) | Col 2: entidad
+// Cols 3,6,9...36: cant mes | Cols 4,7,10...37: valor glosa | Cols 5,8,11...38: %
+// Col 39: TOTAL cant | Col 40: TOTAL GLOSA VIVA | Col 41: % TOTAL
 function processSheet2(rows) {
-  // Structure: blocks by year, header in fila with "ENTIDAD"
-  const byYearEnt = {}; // { 2023: { entidad: { mes: { cant, valor, pct } } } }
+  const byYearEnt = {};
   let currentYear = null;
-  let inBlock = false;
-  let mesHeaders = [];
+  const MES_COLS = {};
+  MESES.forEach(function(m, idx) { MES_COLS[m] = 3 + idx * 3; });
 
-  for (let i=0; i<rows.length; i++) {
+  for (let i = 0; i < rows.length; i++) {
     const cols = Object.values(rows[i]);
-    // Detect year (col B = index 1) — puede llegar como string con raw:false
-    const possibleYear = cols[1];
-    if (possibleYear !== null && possibleYear !== undefined && possibleYear !== '') {
-      const yr2 = parseInt(possibleYear);
-      if (!isNaN(yr2) && yr2 > 2015 && yr2 < 2100) currentYear = yr2;
+
+    // Detectar año en col 1
+    const col1 = cols[1];
+    if (col1 !== null && col1 !== undefined && col1 !== '') {
+      const yr = parseInt(col1);
+      if (!isNaN(yr) && yr > 2015 && yr < 2100) currentYear = yr;
     }
-    // Detect header row
-    if (cols[2] && String(cols[2]).toUpperCase().trim() === 'ENTIDAD') {
-      inBlock = true;
-      // Read month headers from remaining cols: pattern ENERO, GLOSA VIVA, %, FEBRERO...
-      mesHeaders = [];
-      for (let c=3; c<cols.length; c+=3) {
-        const m = cols[c];
-        if (m && MESES.includes(String(m).toUpperCase().trim())) {
-          mesHeaders.push({ mes: String(m).toUpperCase().trim(), c });
-        } else if (m && String(m).toUpperCase().includes('TOTAL')) {
-          mesHeaders.push({ mes:'TOTAL', c }); break;
-        }
-      }
-      continue;
-    }
-    if (!inBlock || !currentYear) continue;
-    // Check if it's a total row (col 2 is null/empty = subtotal row)
-    const entidad = cols[2] ? String(cols[2]).trim() : null;
-    if (!entidad || entidad === '' || entidad === 'ENTIDAD') continue;
+
+    // Ignorar fila cabecera y filas sin entidad
+    const col2 = cols[2] ? String(cols[2]).trim() : null;
+    if (!col2 || col2 === '' || col2 === 'ENTIDAD') continue;
+    if (!currentYear) continue;
 
     if (!byYearEnt[currentYear]) byYearEnt[currentYear] = {};
-    if (!byYearEnt[currentYear][entidad]) byYearEnt[currentYear][entidad] = {};
+    if (!byYearEnt[currentYear][col2]) byYearEnt[currentYear][col2] = {};
 
-    mesHeaders.forEach(({ mes, c }) => {
-      if (mes === 'TOTAL') {
-        byYearEnt[currentYear][entidad]['TOTAL'] = {
-          cant: parseNum(cols[c])||0,
-          valor: parseNum(cols[c1])||0,
-          pct:  parseNum(cols[c2])||0
-        };
-      } else {
-        byYearEnt[currentYear][entidad][mes] = {
-          cant:  parseNum(cols[c])||0,
-          valor: parseNum(cols[c1])||0,
-          pct:   parseNum(cols[c2])||0
-        };
-      }
+    MESES.forEach(function(mes) {
+      var c = MES_COLS[mes];
+      byYearEnt[currentYear][col2][mes] = {
+        cant:  parseNum(cols[c]),
+        valor: parseNum(cols[c + 1]),
+        pct:   parseNum(cols[c + 2])
+      };
     });
+    byYearEnt[currentYear][col2]['TOTAL'] = {
+      cant:  parseNum(cols[39]),
+      valor: parseNum(cols[40]),
+      pct:   parseNum(cols[41])
+    };
   }
   return { byYearEnt };
 }
 
-// ═══════════════════════════════════════════════
-// VALIDACIÓN CRUZADA HOJAS 1 vs 2 (MALLA BLOQUEANTE)
-// ═══════════════════════════════════════════════
-// Regla: la suma de "GLOSA VIVA" por entidad en H2 para cada mes/año
-// debe ser EXACTAMENTE igual al campo valGlosa (col G) de H1.
-// Tolerancia: ±1 peso por redondeos de decimales en Excel.
-function validateCrossSheet(sheet1, sheet2) {
-  const TOLERANCIA = 1; // peso
-  const errores = [];
-
-  // Iterar todos los años con datos en H1
-  for (const [yearStr, yData] of Object.entries(sheet1.byYear)) {
-    const year = parseInt(yearStr);
-    const h2year = sheet2.byYearEnt[year];
-
-    // Si H2 no tiene ese año y H1 tiene glosa > 0 → error
-    const h1totAnio = yData.totGlosa || 0;
-    if (!h2year && h1totAnio > 0) {
-      errores.push({
-        tipo: 'AÑO_FALTANTE',
-        anio: year,
-        mes: null,
-        h1: h1totAnio,
-        h2: 0,
-        diff: h1totAnio
-      });
-      continue;
-    }
-    if (!h2year) continue;
-
-    // Verificar por mes
-    for (const row of yData.rows) {
-      const mes = row.mes;
-      const h1val = row.valGlosa || 0;
-
-      // Sumar col "GLOSA VIVA" (valor) de todas las entidades para ese mes
-      let h2val = 0;
-      for (const [ent, meses] of Object.entries(h2year)) {
-        const mData = meses[mes];
-        if (mData) h2val += mData.valor || 0;
-      }
-
-      const diff = Math.abs(h2val - h1val);
-      if (diff > TOLERANCIA) {
-        errores.push({
-          tipo: 'DIFERENCIA_MES',
-          anio: year,
-          mes,
-          h1: h1val,
-          h2: h2val,
-          diff: h2val - h1val
-        });
-      }
-    }
-  }
-
-  return errores;
-}
-
-function renderValidationError(errores, ipsId) {
-  const ips = ipsStore[ipsId];
-  const btn = document.getElementById('btn-'+ipsId);
-  if (btn) { btn.textContent = 'Actualizar'; btn.disabled = false; }
-
-  let filas = '';
-  errores.forEach(function(e) {
-    const diffStr = e.diff >= 0
-      ? '+$ ' + Math.round(e.diff).toLocaleString('es-CO')
-      : '-$ ' + Math.round(Math.abs(e.diff)).toLocaleString('es-CO');
-    const tipo = e.tipo === 'AÑO_FALTANTE' ? 'Año sin datos en H2' : 'Diferencia por mes';
-    filas += '<tr>' +
-      '<td style="padding:7px 12px;font-weight:600">' + e.anio + '</td>' +
-      '<td style="padding:7px 12px">' + (e.mes || '(total año)') + '</td>' +
-      '<td style="padding:7px 12px;font-family:\'DM Mono\',monospace;text-align:right">$ ' + Math.round(e.h1).toLocaleString('es-CO') + '</td>' +
-      '<td style="padding:7px 12px;font-family:\'DM Mono\',monospace;text-align:right">$ ' + Math.round(e.h2).toLocaleString('es-CO') + '</td>' +
-      '<td style="padding:7px 12px;font-family:\'DM Mono\',monospace;text-align:right;font-weight:700;color:#dc2626">' + diffStr + '</td>' +
-      '<td style="padding:7px 12px;font-size:11px;color:#7f1d1d">' + tipo + '</td>' +
-    '</tr>';
-  });
-
-  const modal = document.createElement('div');
-  modal.id = 'validation-modal';
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;';
-  modal.innerHTML =
-    '<div style="background:#fff;border-radius:16px;width:min(820px,95vw);max-height:85vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.35)">' +
-      '<div style="background:#dc2626;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">' +
-        '<div>' +
-          '<div style="color:#fff;font-size:16px;font-weight:700">\uD83D\uDEAB Cargue bloqueado \u2014 Malla de validaci\u00f3n fallida</div>' +
-          '<div style="color:#fecaca;font-size:12px;margin-top:3px">' + ips.name + ' \u00b7 ' + errores.length + ' diferencia(s) detectada(s) entre Hoja 1 y Hoja 2</div>' +
-        '</div>' +
-      '</div>' +
-      '<div style="padding:20px 24px;overflow-y:auto;flex:1">' +
-        '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:14px 18px;margin-bottom:18px">' +
-          '<div style="font-size:13px;font-weight:700;color:#7f1d1d;margin-bottom:6px">Condici\u00f3n obligatoria no cumplida</div>' +
-          '<div style="font-size:12px;color:#991b1b;line-height:1.7">' +
-            'La suma de <strong>Glosa (col. G \u2014 Hoja 1)</strong> de cada mes debe ser <strong>exactamente igual</strong> ' +
-            'a la suma de <strong>Glosa Viva por entidad (Hoja 2)</strong> para el mismo mes y a\u00f1o.<br>' +
-            'Corrija las diferencias en el archivo Excel y vuelva a cargarlo.' +
-          '</div>' +
-        '</div>' +
-        '<div style="font-size:13px;font-weight:700;color:#111827;margin-bottom:10px">Detalle de diferencias</div>' +
-        '<div style="overflow-x:auto;border-radius:8px;border:1px solid #e5e7eb">' +
-          '<table style="width:100%;border-collapse:collapse;font-size:13px">' +
-            '<thead>' +
-              '<tr style="background:#f9fafb">' +
-                '<th style="padding:8px 12px;text-align:left;font-size:11px;color:#6b7280;border-bottom:1px solid #e5e7eb">A\u00d1O</th>' +
-                '<th style="padding:8px 12px;text-align:left;font-size:11px;color:#6b7280;border-bottom:1px solid #e5e7eb">MES</th>' +
-                '<th style="padding:8px 12px;text-align:right;font-size:11px;color:#1d6ca8;border-bottom:1px solid #e5e7eb">GLOSA H1 (col G)</th>' +
-                '<th style="padding:8px 12px;text-align:right;font-size:11px;color:#6d28d9;border-bottom:1px solid #e5e7eb">SUMA H2 (entidades)</th>' +
-                '<th style="padding:8px 12px;text-align:right;font-size:11px;color:#dc2626;border-bottom:1px solid #e5e7eb">DIFERENCIA</th>' +
-                '<th style="padding:8px 12px;text-align:left;font-size:11px;color:#6b7280;border-bottom:1px solid #e5e7eb">TIPO</th>' +
-              '</tr>' +
-            '</thead>' +
-            '<tbody>' + filas + '</tbody>' +
-          '</table>' +
-        '</div>' +
-      '</div>' +
-      '<div style="padding:14px 24px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;background:#fafafa">' +
-        '<div style="font-size:12px;color:#6b7280">El cargue NO fue registrado. Corrija el Excel y vuelva a intentarlo.</div>' +
-        '<button onclick="document.getElementById(\'validation-modal\').remove()" ' +
-          'style="padding:9px 20px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">' +
-          'Entendido \u2014 Cerrar' +
-        '</button>' +
-      '</div>' +
-    '</div>';
-  document.body.appendChild(modal);
-}
 // ═══════════════════════════════════════════════
 // FILE LOAD
 // ═══════════════════════════════════════════════

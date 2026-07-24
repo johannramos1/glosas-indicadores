@@ -1008,7 +1008,20 @@ window.doLoad = async function(ipsId) {
       }
 
       const sheet1 = processSheet1(rows1);
+      // LOG: ver qué lee el browser para 2026
+      var log2026 = [];
+      for (var ri2 = 0; ri2 < rows2.length; ri2++) {
+        var r2 = rows2[ri2];
+        if (r2[1] === 2026 || (log2026.length > 0 && log2026.length < 25)) {
+          if (r2[1] === 2026) log2026 = [];
+          log2026.push({fila: ri2+1, col1:r2[1], col2:r2[2], col4:r2[4], col7:r2[7]});
+        }
+      }
+      console.log('Bloque 2026 H2 (primeras filas):', JSON.stringify(log2026.slice(0,8)));
       const sheet2 = processSheet2(rows2);
+      console.log('byYearEnt 2026 entidades:', Object.keys(sheet2.byYearEnt[2026]||{}).length);
+      var ent1 = Object.keys(sheet2.byYearEnt[2026]||{})[0];
+      if(ent1) console.log('Primera entidad 2026:', ent1, JSON.stringify(sheet2.byYearEnt[2026][ent1]));
 
       // ── MALLA DE VALIDACIÓN CRUZADA (bloqueante) ──
       const erroresValidacion = validateCrossSheet(sheet1, sheet2);

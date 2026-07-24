@@ -783,8 +783,12 @@ function processSheet2(rows) {
 
     // Entidad en col C (obj[2])
     var entidad = r[2] ? String(r[2]).trim() : null;
-    if (!entidad || entidad === 'ENTIDAD' || entidad === '') continue;
+    // Fila de cabecera — resetear año para no leer secciones de acumulados
+    if (entidad === 'ENTIDAD') { currentYear = null; continue; }
+    if (!entidad || entidad === '' || entidad === 'TOTAL') continue;
     if (!currentYear) continue;
+    // Ignorar filas de totales (col2 vacío = fila de subtotal)
+    if (!r[2]) continue;
 
     if (!byYearEnt[currentYear]) byYearEnt[currentYear] = {};
     if (!byYearEnt[currentYear][entidad]) byYearEnt[currentYear][entidad] = {};
@@ -869,6 +873,8 @@ function processSheet2(rows) {
 // VALIDACIÓN CRUZADA HOJAS 1 vs 2 (MALLA BLOQUEANTE)
 // ═══════════════════════════════════════════════
 function validateCrossSheet(sheet1, sheet2) {
+  // Compara H1 vs H2 SOLO para los meses que existen en H1
+  // El año en curso tiene menos meses — H2 tiene columna TOTAL donde iría el siguiente mes
   var TOLERANCIA = 1;
   var errores = [];
   var years = Object.keys(sheet1.byYear);
@@ -882,6 +888,7 @@ function validateCrossSheet(sheet1, sheet2) {
       continue;
     }
     if (!h2year) continue;
+    // Iterar solo los meses que H1 tiene registrados
     var rows = yData.rows || [];
     for (var ri = 0; ri < rows.length; ri++) {
       var row = rows[ri];

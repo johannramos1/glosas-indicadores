@@ -14,8 +14,8 @@
   /* Paleta ADRES unificada */
   --c-pago-ini:   #2d9e6b;
   --c-pago-fin:   #1d6ca8;
-  --c-glosa-ini:  #e5a800;
-  --c-glosa-viva: #8b5cf6;
+  --c-glosa-ini:  #1d6ca8;
+  --c-glosa-viva: #1d6ca8;
   --c-nc:         #dc2626;
 
   --dolormed:     #2d6a4f;
@@ -91,7 +91,26 @@ body { font-family:'DM Sans',sans-serif; background:#f0f2f5; color:var(--text-da
 .sidebar {
   width:220px; flex-shrink:0; background:#fff; border-right:1px solid var(--border);
   display:flex; flex-direction:column; overflow-y:auto;
+  transition:width .2s ease;
 }
+.sidebar.collapsed { width:48px; overflow:hidden; }
+.sidebar.collapsed .sb-section,
+.sidebar.collapsed .sb-ips-card,
+.sidebar.collapsed .sb-divider,
+.sidebar.collapsed .sb-item span { display:none; }
+.sidebar.collapsed .sb-item { justify-content:center; padding:9px 0; margin:1px 4px; }
+.sidebar.collapsed .sb-icon { opacity:.7; }
+.sidebar-toggle {
+  position:absolute; top:50%; left:220px; transform:translate(-50%,-50%);
+  width:20px; height:36px; background:#fff; border:1px solid var(--border);
+  border-radius:0 6px 6px 0; cursor:pointer; display:flex; align-items:center;
+  justify-content:center; z-index:10; transition:left .2s ease;
+  box-shadow:2px 0 6px rgba(0,0,0,.08);
+}
+.sidebar-toggle:hover { background:var(--surface); }
+.sidebar-toggle svg { width:10px; height:10px; color:var(--text-light); transition:transform .2s; }
+.sidebar.collapsed + .sidebar-toggle-wrap .sidebar-toggle { left:48px; }
+.sidebar-toggle-wrap { position:relative; flex-shrink:0; }
 .sb-section { padding:16px 12px 8px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:var(--text-light); }
 .sb-item {
   display:flex; align-items:center; gap:10px; padding:9px 14px;
@@ -231,7 +250,7 @@ tbody tr.total-row td { background:#f0f2f5; font-weight:700; border-top:2px soli
   box-shadow:var(--shadow); border-top:4px solid #e5e7eb;
 }
 .comp-hist-panel.panel-a { border-top-color:#1d6ca8; }
-.comp-hist-panel.panel-b { border-top-color:#e5a800; }
+.comp-hist-panel.panel-b { border-top-color:#1d6ca8; }
 .comp-hist-panel-head {
   padding:12px 18px; display:flex; justify-content:space-between; align-items:center;
   border-bottom:1px solid var(--border);
@@ -336,7 +355,8 @@ tbody tr.total-row td { background:#f0f2f5; font-weight:700; border-top:2px soli
   <div class="app-body">
 
     <!-- SIDEBAR -->
-    <div class="sidebar">
+    <div style="position:relative;display:flex;flex-shrink:0">
+    <div class="sidebar" id="main-sidebar">
       <div class="sb-section">Informe por IPS</div>
       <div class="sb-ips-card" id="sb-card-dolormed" style="cursor:default">
         <div class="ips-name" style="color:var(--dolormed)"><span class="ips-dot" id="dot-dolormed"></span>Dolormed</div>
@@ -371,6 +391,12 @@ tbody tr.total-row td { background:#f0f2f5; font-weight:700; border-top:2px soli
         <svg class="sb-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M10 12a2 2 0 100-4 2 2 0 000 4zm6.32-1.06a6 6 0 00.08-.94 6 6 0 00-.08-.94l2.03-1.58a.5.5 0 00.12-.63l-1.92-3.32a.5.5 0 00-.61-.22l-2.39.96a5.98 5.98 0 00-1.63-.94L11.26 2.1A.5.5 0 0010.77 2H7.23a.5.5 0 00-.49.41L6.38 4.73a5.98 5.98 0 00-1.63.94L2.36 4.7a.5.5 0 00-.61.22L.83 8.24a.5.5 0 00.12.63l2.03 1.58a6 6 0 000 1.88l-2.03 1.58a.5.5 0 00-.12.63l1.92 3.32a.5.5 0 00.61.22l2.39-.96c.5.36 1.05.66 1.63.94l.36 2.63a.5.5 0 00.49.41h3.54a.5.5 0 00.49-.41l.36-2.63c.58-.28 1.12-.58 1.63-.94l2.39.96a.5.5 0 00.61-.22l1.92-3.32a.5.5 0 00-.12-.63l-2.03-1.58z"/></svg>
         Configuración
       </div>
+    </div>
+    <button class="sidebar-toggle" id="sb-toggle" onclick="toggleSidebar()" title="Compactar/ampliar menú">
+      <svg id="sb-toggle-icon" viewBox="0 0 10 16" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="7,2 2,8 7,14"/>
+      </svg>
+    </button>
     </div>
 
     <!-- MAIN -->
@@ -517,7 +543,16 @@ async function doLogin() {
     const match = rows.find(r => r.clave === pass);
     try { await sbU('accesos_log', [{ usuario:user, exitoso:!!match, sistema:SISTEMA }]); } catch(e){}
     if (match) {
-      SESSION_USER = { id:match.id, nombre:match.nombre, usuario:match.usuario, rol: match.rol||'viewer' };
+      // Rol desde Supabase con fallback por username para garantizar permisos correctos
+      var rolDB = match.rol || 'viewer';
+      var uLow = match.usuario.toLowerCase();
+      // Forzar rol correcto por usuario conocido (seguridad adicional)
+      var rolFinal = rolDB;
+      if (uLow === 'admin') rolFinal = 'admin';
+      else if (uLow === 'jcleves') rolFinal = 'gerencia';
+      else if (uLow === 'yurodas' || uLow === 'riosorio') rolFinal = 'coordinador';
+      else rolFinal = 'viewer';
+      SESSION_USER = { id:match.id, nombre:match.nombre, usuario:match.usuario, rol: rolFinal };
       sessionStorage.setItem('glosas_session', JSON.stringify(SESSION_USER));
       initApp();
     } else {
@@ -555,13 +590,21 @@ async function initApp() {
   // Visibilidad nav comparativo: solo admin y gerencia
   const navComp = document.getElementById('nav-comparativo');
   if (navComp) navComp.style.display = canUseComparativo() ? 'flex' : 'none';
-  // Admin-only sections
+
+  // Nav Configuración: visible solo para admin y coordinadores de cargue
+  // Gerencia y viewers NO ven configuración
+  const navConfig = document.getElementById('nav-config');
+  const canConfig = SESSION_USER.rol === 'admin' || SESSION_USER.rol === 'coordinador';
+  if (navConfig) navConfig.style.display = canConfig ? 'flex' : 'none';
+
+  // Sección usuarios: solo admin
   if (SESSION_USER.rol === 'admin') {
     document.getElementById('users-section').style.display = 'block';
     cargarUsuarios();
   }
   buildConfigUI();
   await loadAllFromSupabase();
+  initSidebarState();
 }
 
 // ═══════════════════════════════════════════════
@@ -1183,8 +1226,8 @@ function renderResumen() {
           '<div class="comp-kpi-sub">'+t.totCuentas.toLocaleString('es-CO')+' cuentas</div>' +
         '</div>' +
         '<div class="comp-kpi">' +
-          '<div class="comp-kpi-label" style="color:#e5a800">Glosa Viva</div>' +
-          '<div class="comp-kpi-value" style="color:#e5a800">'+fmtCOP(t.totGlosa)+'</div>' +
+          '<div class="comp-kpi-label" style="color:#1d6ca8">Glosa Viva</div>' +
+          '<div class="comp-kpi-value" style="color:#1d6ca8">'+fmtCOP(t.totGlosa)+'</div>' +
           '<div class="comp-kpi-sub">'+fmtPct(t.pctGlosa)+' del radicado</div>' +
         '</div>' +
         '<div class="comp-kpi">' +
@@ -1212,22 +1255,25 @@ function renderResumen() {
   html += '<div class="tbl-head">';
   html += '<div class="tbl-title">Comparativo Anual · Ambas IPS</div>';
   // Selector multi-año
-  html += '<div style="display:flex;align-items:center;gap:8px">';
-  html += '<label style="font-size:11px;color:var(--text-light)">Filtrar años:</label>';
-  html += '<select class="fsel" id="resumen-years-table" multiple style="height:32px;min-width:120px" onchange="renderResumen()">';
+  html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">';
+  html += '<span style="font-size:11px;color:var(--text-light);margin-right:2px">Años:</span>';
+  // Pill "Todos"
+  const allSelY = filterYear === 'todos';
+  html += '<button onclick="document.getElementById(\'resumen-year-filter\').value=\'todos\';renderResumen()" '+
+    'style="padding:3px 10px;border-radius:12px;border:1.5px solid '+(allSelY?'#1d6ca8':'#e5e7eb')+';background:'+(allSelY?'#dbeafe':'#fff')+';color:'+(allSelY?'#1d4ed8':'#6b7280')+';font-size:11px;font-weight:600;cursor:pointer">Todos</button>';
+  // Pill por año
   allYears.forEach(function(y) {
-    const sel = filterYear === 'todos' || filterYear === y;
-    html += '<option value="'+y+'"'+(sel?' selected':'')+'>'+y+'</option>';
+    const selY = filterYear === y;
+    html += '<button onclick="document.getElementById(\'resumen-year-filter\').value=\''+y+'\';renderResumen()" '+
+      'style="padding:3px 10px;border-radius:12px;border:1.5px solid '+(selY?'#1d6ca8':'#e5e7eb')+';background:'+(selY?'#dbeafe':'#fff')+';color:'+(selY?'#1d4ed8':'#6b7280')+';font-size:11px;font-weight:600;cursor:pointer">'+y+'</button>';
   });
-  html += '</select>';
-  html += '<button class="fbtn" onclick="document.getElementById(&quot;resumen-years-table&quot;).querySelectorAll(&quot;option&quot;).forEach(function(o){o.selected=true});renderResumen()" style="height:32px;font-size:11px">Todos</button>';
   html += '</div></div>';
   html += '<div style="overflow-x:auto"><table>';
   html += '<thead><tr>';
   html += '<th style="text-align:left">AÑO</th>';
   html += '<th>CUENTAS</th>';
   html += '<th>RADICADO</th>';
-  html += '<th style="color:#e5a800">GLOSA VIVA</th>';
+  html += '<th style="color:#1d6ca8">GLOSA VIVA</th>';
   html += '<th>% GLOSA</th>';
   html += '<th style="color:#2d9e6b">VALOR PAGADO</th>';
   html += '<th>% PAGADO</th>';
@@ -1261,7 +1307,7 @@ function renderResumen() {
         '<td><strong>'+y+'</strong>'+(isCur?' <span class="badge badge-green" style="font-size:9px">Actual</span>':'')+' </td>'+
         '<td class="mono">'+fmt0(d.totCuentas)+'</td>'+
         '<td class="mono">'+fmtCOP(d.totRad)+'</td>'+
-        '<td class="mono" style="color:#e5a800">'+fmtCOP(d.totGlosa)+'</td>'+
+        '<td class="mono" style="color:#1d6ca8">'+fmtCOP(d.totGlosa)+'</td>'+
         '<td><span class="badge '+(pG>0.3?'badge-red':pG>0.1?'badge-amber':'badge-green')+'">'+fmtPct(pG)+'</span></td>'+
         '<td class="mono" style="color:#2d9e6b">'+fmtCOP(pagado)+'</td>'+
         '<td style="color:#2d9e6b">'+fmtPct(pP)+'</td>'+
@@ -1283,7 +1329,7 @@ function renderResumen() {
         '<td><strong>'+y+'</strong>'+(isCur?' <span class="badge badge-blue" style="font-size:9px">Actual</span>':'')+' </td>'+
         '<td class="mono">'+fmt0(d.totCuentas)+'</td>'+
         '<td class="mono">'+fmtCOP(d.totRad)+'</td>'+
-        '<td class="mono" style="color:#e5a800">'+fmtCOP(d.totGlosa)+'</td>'+
+        '<td class="mono" style="color:#1d6ca8">'+fmtCOP(d.totGlosa)+'</td>'+
         '<td><span class="badge '+(pG>0.3?'badge-red':pG>0.1?'badge-amber':'badge-green')+'">'+fmtPct(pG)+'</span></td>'+
         '<td class="mono" style="color:#2d9e6b">'+fmtCOP(pagado)+'</td>'+
         '<td style="color:#2d9e6b">'+fmtPct(pP)+'</td>'+
@@ -1301,7 +1347,7 @@ function renderResumen() {
       '<td>TOTAL DOL</td>'+
       '<td class="mono">'+fmt0(gCue)+'</td>'+
       '<td class="mono">'+fmtCOP(gRad)+'</td>'+
-      '<td class="mono" style="color:#e5a800">'+fmtCOP(gGlosa)+'</td>'+
+      '<td class="mono" style="color:#1d6ca8">'+fmtCOP(gGlosa)+'</td>'+
       '<td><strong>'+fmtPct(tpGd)+'</strong></td>'+
       '<td class="mono" style="color:#2d9e6b">'+fmtCOP(gPag)+'</td>'+
       '<td style="color:#2d9e6b"><strong>'+fmtPct(tpPd)+'</strong></td>'+
@@ -1316,7 +1362,7 @@ function renderResumen() {
       '<td>TOTAL RED</td>'+
       '<td class="mono">'+fmt0(gCueR)+'</td>'+
       '<td class="mono">'+fmtCOP(gRadR)+'</td>'+
-      '<td class="mono" style="color:#e5a800">'+fmtCOP(gGlosaR)+'</td>'+
+      '<td class="mono" style="color:#1d6ca8">'+fmtCOP(gGlosaR)+'</td>'+
       '<td><strong>'+fmtPct(tpGr)+'</strong></td>'+
       '<td class="mono" style="color:#2d9e6b">'+fmtCOP(gPagR)+'</td>'+
       '<td style="color:#2d9e6b"><strong>'+fmtPct(tpPr)+'</strong></td>'+
@@ -1378,10 +1424,10 @@ function renderChartResumen() {
 
   const datasets = [];
   const metricMap = {
-    'rad_glosa':  [{f:'rad',l:'Radicado (M$)',c:'#2d6a4f'},{f:'glosa',l:'Glosa Viva (M$)',c:'#e5a800'}],
+    'rad_glosa':  [{f:'rad',l:'Radicado (M$)',c:'#2d6a4f'},{f:'glosa',l:'Glosa Viva (M$)',c:'#1d6ca8'}],
     'rad_norec':  [{f:'rad',l:'Radicado (M$)',c:'#2d6a4f'},{f:'norec',l:'No Recuperado (M$)',c:'#dc2626'}],
     'rad_pagado': [{f:'rad',l:'Radicado (M$)',c:'#2d6a4f'},{f:'pagado',l:'Valor Pagado (M$)',c:'#2d9e6b'}],
-    'glosa':      [{f:'glosa',l:'Glosa Viva (M$)',c:'#e5a800'}]
+    'glosa':      [{f:'glosa',l:'Glosa Viva (M$)',c:'#1d6ca8'}]
   };
   const fields = metricMap[metric] || metricMap['rad_glosa'];
 
@@ -1438,7 +1484,7 @@ function mensualTable(data, ipsName, filterYear, color) {
   html += '<th style="text-align:left">MES</th>';
   html += '<th>CUENTAS</th>';
   html += '<th>RADICADO</th>';
-  html += '<th style="color:#e5a800">GLOSA VIVA</th>';
+  html += '<th style="color:#1d6ca8">GLOSA VIVA</th>';
   html += '<th>% GLOSA</th>';
   html += '<th style="color:#2d9e6b">VALOR PAGADO</th>';
   html += '<th>% PAG.</th>';
@@ -1456,7 +1502,7 @@ function mensualTable(data, ipsName, filterYear, color) {
       '<td style="font-size:12px;font-weight:500">'+r.mes.substring(0,3)+'</td>'+
       '<td class="mono">'+fmt0(r.cuentasRad)+'</td>'+
       '<td class="mono">'+fmtCOP(r.valRad)+'</td>'+
-      '<td class="mono" style="color:#e5a800">'+fmtCOP(r.valGlosa)+'</td>'+
+      '<td class="mono" style="color:#1d6ca8">'+fmtCOP(r.valGlosa)+'</td>'+
       '<td><span class="badge '+badgePG+'">'+fmtPct(pGV)+'</span></td>'+
       '<td class="mono" style="color:#2d9e6b">'+fmtCOP(pagado)+'</td>'+
       '<td style="color:#2d9e6b">'+fmtPct(pPag)+'</td>'+
@@ -1473,7 +1519,7 @@ function mensualTable(data, ipsName, filterYear, color) {
     '<td>TOTAL</td>'+
     '<td class="mono">'+fmt0(y.totCuentas)+'</td>'+
     '<td class="mono">'+fmtCOP(y.totRad)+'</td>'+
-    '<td class="mono" style="color:#e5a800">'+fmtCOP(y.totGlosa)+'</td>'+
+    '<td class="mono" style="color:#1d6ca8">'+fmtCOP(y.totGlosa)+'</td>'+
     '<td><span class="badge '+(pGTot>0.3?'badge-red':pGTot>0.1?'badge-amber':'badge-green')+'">'+fmtPct(pGTot)+'</span></td>'+
     '<td class="mono" style="color:#2d9e6b">'+fmtCOP(pagadoTot)+'</td>'+
     '<td style="color:#2d9e6b">'+fmtPct(pPTot)+'</td>'+
@@ -1547,7 +1593,7 @@ function entRanking(data, ipsName, filterYears, color, canvasId) {
   html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">';
   html += '<div style="background:var(--surface);border-radius:8px;padding:10px 12px">';
   html += '<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text-light);margin-bottom:3px">Total Glosa Viva</div>';
-  html += '<div style="font-family:var(--mono);font-size:15px;color:#e5a800">'+fmtCOP(totVal)+'</div></div>';
+  html += '<div style="font-family:var(--mono);font-size:15px;color:#1d6ca8">'+fmtCOP(totVal)+'</div></div>';
   html += '<div style="background:var(--surface);border-radius:8px;padding:10px 12px">';
   html += '<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text-light);margin-bottom:3px">Entidades activas</div>';
   html += '<div style="font-family:var(--mono);font-size:15px">'+sorted.length+'</div></div>';
@@ -1557,7 +1603,7 @@ function entRanking(data, ipsName, filterYears, color, canvasId) {
   html += '<thead><tr>';
   html += '<th style="text-align:left;padding:5px 6px;font-size:10px;color:var(--text-light)">#</th>';
   html += '<th style="text-align:left;padding:5px 6px;font-size:10px;color:var(--text-light)">ENTIDAD</th>';
-  html += '<th style="text-align:right;padding:5px 6px;font-size:10px;color:#e5a800">GLOSA VIVA</th>';
+  html += '<th style="text-align:right;padding:5px 6px;font-size:10px;color:#1d6ca8">GLOSA VIVA</th>';
   html += '<th style="text-align:center;padding:5px 6px;font-size:10px;color:var(--text-light)">PART. %</th>';
   html += '</tr></thead><tbody>';
   sorted.forEach(function(e,i) {
@@ -1566,13 +1612,13 @@ function entRanking(data, ipsName, filterYears, color, canvasId) {
     html += '<tr style="border-bottom:1px solid #f3f4f6">'+
       '<td style="padding:6px;color:var(--text-light);font-size:11px">'+(i+1)+'</td>'+
       '<td style="padding:6px;max-width:150px">'+shortName+'</td>'+
-      '<td class="mono" style="padding:6px;text-align:right;color:#e5a800">'+fmtCOP(e.valor)+'</td>'+
+      '<td class="mono" style="padding:6px;text-align:right;color:#1d6ca8">'+fmtCOP(e.valor)+'</td>'+
       '<td style="padding:6px;min-width:80px">'+
         '<div style="display:flex;align-items:center;gap:4px">'+
           '<div style="flex:1;height:5px;background:#f3f4f6;border-radius:3px">'+
-            '<div style="width:'+pct+'%;height:100%;background:#e5a800;border-radius:3px"></div>'+
+            '<div style="width:'+pct+'%;height:100%;background:#1d6ca8;border-radius:3px"></div>'+
           '</div>'+
-          '<span style="font-size:10px;font-weight:700;color:#e5a800;width:28px">'+pct+'%</span>'+
+          '<span style="font-size:10px;font-weight:700;color:#1d6ca8;width:28px">'+pct+'%</span>'+
         '</div>'+
       '</td>'+
     '</tr>';
@@ -1604,16 +1650,16 @@ function entDetalleTabla(data, ipsName, filterYears, color) {
   html += '<div style="overflow-x:auto"><table style="width:100%;font-size:11px;border-collapse:collapse">';
   html += '<thead><tr><th style="text-align:left;padding:5px 8px;font-size:10px">ENTIDAD</th>';
   MESES.forEach(function(m){html+='<th style="font-size:9px;padding:4px 5px">'+m.substring(0,3)+'</th>';});
-  html += '<th style="color:#e5a800;font-size:10px">TOTAL</th></tr></thead><tbody>';
+  html += '<th style="color:#1d6ca8;font-size:10px">TOTAL</th></tr></thead><tbody>';
   sorted.forEach(function(ent) {
     const d = entMesMap[ent];
     const shortName = ent.replace(/^\d+-/,'').substring(0,25);
     html += '<tr style="border-bottom:1px solid #f3f4f6"><td style="padding:5px 8px;font-size:11px">'+shortName+'</td>';
     MESES.forEach(function(m){
       const v = d[m]||0;
-      html += '<td class="mono" style="padding:4px 5px;text-align:right;font-size:10px;'+(v>0?'color:#e5a800':'color:#d1d5db')+'">'+(v>0?fmtCOP(v):'—')+'</td>';
+      html += '<td class="mono" style="padding:4px 5px;text-align:right;font-size:10px;'+(v>0?'color:#1d6ca8':'color:#d1d5db')+'">'+(v>0?fmtCOP(v):'—')+'</td>';
     });
-    html += '<td class="mono" style="padding:5px 8px;text-align:right;color:#e5a800;font-weight:700">'+fmtCOP(d.total)+'</td></tr>';
+    html += '<td class="mono" style="padding:5px 8px;text-align:right;color:#1d6ca8;font-weight:700">'+fmtCOP(d.total)+'</td></tr>';
   });
   html += '</tbody></table></div>';
   return html;
@@ -2068,7 +2114,7 @@ function compPanelRows(d, year, glosaNeta, cuentasGlos, pctNoRec, meta) {
   </div>
   <div class="comp-hist-row">
     <div class="chr-label">Cuentas Glosadas &nbsp;<span style="font-size:9px;color:#15803d">↓ mejora si disminuye</span></div>
-    <div class="chr-val" style="color:#e5a800">${fmt0(cuentasGlos)} <span style="font-size:11px;color:var(--text-light)">cuentas · ${fmtPct(pG)} del radicado</span></div>
+    <div class="chr-val" style="color:#1d6ca8">${fmt0(cuentasGlos)} <span style="font-size:11px;color:var(--text-light)">cuentas · ${fmtPct(pG)} del radicado</span></div>
   </div>
   <div class="comp-hist-row">
     <div class="chr-label">Glosa (col. G · misma cifra en H1 y H2) &nbsp;<span style="font-size:9px;color:#15803d">↓ mejora si disminuye</span></div>
@@ -2150,14 +2196,21 @@ function compDeltaCardPct(label, d, pA, pB) {
 function buildConfigUI() {
   const body = document.getElementById('config-body');
   if (!body) return;
-  const isAdmin = SESSION_USER && (SESSION_USER.rol === 'admin' || SESSION_USER.rol === 'gerencia');
-  // Admin y gerencia ven ambas IPS. Coordinadores ven solo la suya.
+  const isAdmin = SESSION_USER && SESSION_USER.rol === 'admin';
+  // Solo admin ve ambas IPS en config. Coordinadores ven solo la suya.
+  // Gerencia y viewers no deberían llegar aquí (nav oculto), pero por seguridad:
+  if (SESSION_USER && SESSION_USER.rol === 'gerencia') return;
+  if (SESSION_USER && SESSION_USER.rol === 'viewer') return;
   const ipsToShow = [];
-  if (isAdmin) { ipsToShow.push('dolormed','redesimat'); }
-  else {
+  if (isAdmin) {
+    ipsToShow.push('dolormed','redesimat');
+  } else {
+    // Coordinadores por usuario exacto
     const u = (SESSION_USER?.usuario || '').toLowerCase();
-    if (u.includes('redesimat') || u.includes('redes') || u.includes('cerrito') || u.includes('buga')) ipsToShow.push('redesimat');
-    else ipsToShow.push('dolormed'); // default para Tulua/Zarzal
+    // Coordinador Redesimat: riosorio (Ricardo Osorio)
+    if (u === 'riosorio') ipsToShow.push('redesimat');
+    // Coordinador Dolormed: yurodas (Yurani Rodas) y cualquier otro
+    else ipsToShow.push('dolormed');
   }
 
   body.innerHTML = ipsToShow.map(ipsId => {
@@ -2237,6 +2290,31 @@ async function cargarUsuarios() {
       '<tbody>'+filas+'</tbody>'+
     '</table>';
   } catch(e) { console.warn('Error cargando usuarios:', e.message); }
+}
+
+// ═══════════════════════════════════════════════
+// SIDEBAR TOGGLE
+// ═══════════════════════════════════════════════
+function toggleSidebar() {
+  const sb = document.getElementById('main-sidebar');
+  const icon = document.getElementById('sb-toggle-icon');
+  const btn  = document.getElementById('sb-toggle');
+  if (!sb) return;
+  const collapsed = sb.classList.toggle('collapsed');
+  // Mover botón
+  btn.style.left = collapsed ? '48px' : '220px';
+  // Rotar flecha
+  icon.innerHTML = collapsed
+    ? '<polyline points="3,2 8,8 3,14"/>'   // flecha derecha = expandir
+    : '<polyline points="7,2 2,8 7,14"/>';  // flecha izquierda = contraer
+  // Guardar estado
+  try { localStorage.setItem('sb_collapsed', collapsed ? '1' : '0'); } catch(e){}
+}
+
+function initSidebarState() {
+  try {
+    if (localStorage.getItem('sb_collapsed') === '1') toggleSidebar();
+  } catch(e){}
 }
 
 // ═══════════════════════════════════════════════

@@ -978,7 +978,13 @@ window.doLoad = async function(ipsId) {
       const rows2 = XLSX.utils.sheet_to_json(ws2, { header:1, defval:null, raw:true });
 
       const sheet1 = processSheet1(rows1);
+      // LOG DIAGNÓSTICO H2
+      console.log('H2 total filas:', rows2.length);
+      console.log('H2 fila 4 raw:', JSON.stringify(rows2[3]));
+      console.log('H2 fila 5 raw:', JSON.stringify(rows2[4]));
+      console.log('H2 fila 6 raw:', JSON.stringify(rows2[5]));
       const sheet2 = processSheet2(rows2);
+      console.log('byYearEnt keys:', Object.keys(sheet2.byYearEnt));
 
       // ── MALLA DE VALIDACIÓN CRUZADA (bloqueante) ──
       const erroresValidacion = validateCrossSheet(sheet1, sheet2);

@@ -762,43 +762,64 @@ function processSheet1(rows) {
 // JUN:col18+19 | JUL:col21+22 | AGO:col24+25 | SEP:col27+28 | OCT:col30+31
 // NOV:col33+34 | DIC:col36+37 | TOTAL:col39+40
 function processSheet2(rows) {
+  // Acceso por nombre de columna (header de letras A,B,C...)
+  // B=año | C=entidad
+  // ENERO: D=cant, E=valor | FEBRERO: G=cant, H=valor | MARZO: J,K
+  // ABRIL: M,N | MAYO: P,Q | JUNIO: S,T | JULIO: V,W | AGOSTO: Y,Z
+  // SEPTIEMBRE: AB,AC | OCTUBRE: AE,AF | NOVIEMBRE: AH,AI | DICIEMBRE: AK,AL
+  // TOTAL: AN=cant, AO=valor
+  var MES_COLS = {
+    'ENERO':     {cant:'D', val:'E'},
+    'FEBRERO':   {cant:'G', val:'H'},
+    'MARZO':     {cant:'J', val:'K'},
+    'ABRIL':     {cant:'M', val:'N'},
+    'MAYO':      {cant:'P', val:'Q'},
+    'JUNIO':     {cant:'S', val:'T'},
+    'JULIO':     {cant:'V', val:'W'},
+    'AGOSTO':    {cant:'Y', val:'Z'},
+    'SEPTIEMBRE':{cant:'AB',val:'AC'},
+    'OCTUBRE':   {cant:'AE',val:'AF'},
+    'NOVIEMBRE': {cant:'AH',val:'AI'},
+    'DICIEMBRE': {cant:'AK',val:'AL'}
+  };
   var byYearEnt = {};
   var currentYear = null;
-  // Índices de columna VALOR GLOSA verificados con openpyxl:
-  // ENERO=4, FEB=7, MAR=10, ABR=13, MAY=16, JUN=19
-  // JUL=22, AGO=25, SEP=28, OCT=31, NOV=34, DIC=37, TOTAL=40
-  var VAL_IDX = [4,7,10,13,16,19,22,25,28,31,34,37];
 
   for (var i = 0; i < rows.length; i++) {
     var r = rows[i];
     if (!r) continue;
 
-    // Año en col 1 (solo primera fila del bloque)
-    var v1 = r[1];
-    if (typeof v1 === 'number' && v1 > 2015 && v1 < 2100) {
-      currentYear = v1;
+    // Año en col B
+    var vB = r['B'];
+    if (typeof vB === 'number' && vB > 2015 && vB < 2100) {
+      currentYear = vB;
     }
 
-    // Entidad SIEMPRE en col 2
-    var entidad = r[2] ? String(r[2]).trim() : null;
+    // Entidad en col C
+    var entidad = r['C'] ? String(r['C']).trim() : null;
     if (!entidad || entidad === 'ENTIDAD' || entidad === '') continue;
     if (!currentYear) continue;
 
     if (!byYearEnt[currentYear]) byYearEnt[currentYear] = {};
     if (!byYearEnt[currentYear][entidad]) byYearEnt[currentYear][entidad] = {};
 
-    MESES.forEach(function(mes, mi) {
-      var vi = VAL_IDX[mi];
+    MESES.forEach(function(mes) {
+      var cols = MES_COLS[mes];
       byYearEnt[currentYear][entidad][mes] = {
-        cant:  parseNum(r[vi - 1]),
-        valor: parseNum(r[vi]),
-        pct:   parseNum(r[vi + 1])
+        cant:  parseNum(r[cols.cant]),
+        valor: parseNum(r[cols.val]),
+        pct:   parseNum(r[cols.val.replace(/([A-Z]+)/,function(m){
+          // siguiente letra para %
+          var letters='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+          if(m.length===1) return letters[letters.indexOf(m)+1]||m;
+          return m.slice(0,-1)+letters[letters.indexOf(m.slice(-1))+1];
+        })])
       };
     });
     byYearEnt[currentYear][entidad]['TOTAL'] = {
-      cant:  parseNum(r[39]),
-      valor: parseNum(r[40]),
-      pct:   parseNum(r[41])
+      cant:  parseNum(r['AN']),
+      valor: parseNum(r['AO']),
+      pct:   parseNum(r['AP'])
     };
   }
   return { byYearEnt: byYearEnt };
@@ -977,14 +998,9 @@ window.doLoad = async function(ipsId) {
       const ws1 = wb.Sheets[wb.SheetNames[0]];
       const ws2 = wb.Sheets[wb.SheetNames[1]];
       const rows1 = XLSX.utils.sheet_to_json(ws1, { header:1, defval:null, raw:true });
-      // Para H2: forzar array denso rellenando hasta la columna máxima
-      const rows2raw = XLSX.utils.sheet_to_json(ws2, { header:1, defval:null, raw:true });
-      // Asegurar que cada fila tenga al menos 48 elementos (rellena con null)
-      const rows2 = rows2raw.map(function(r){
-        var arr = Array.isArray(r) ? r.slice() : [];
-        while(arr.length < 48) arr.push(null);
-        return arr;
-      });
+      // H2: usar header de letras A-AV para acceso por nombre sin ambigüedad de sparse arrays
+      const H2_HDR = 'A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z,AA,AB,AC,AD,AE,AF,AG,AH,AI,AJ,AK,AL,AM,AN,AO,AP,AQ,AR,AS,AT,AU,AV'.split(',');
+      const rows2 = XLSX.utils.sheet_to_json(ws2, { header:H2_HDR, defval:null, raw:true });
 
       const sheet1 = processSheet1(rows1);
       const sheet2 = processSheet2(rows2);

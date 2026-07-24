@@ -762,50 +762,69 @@ function processSheet1(rows) {
 // JUN:col18+19 | JUL:col21+22 | AGO:col24+25 | SEP:col27+28 | OCT:col30+31
 // NOV:col33+34 | DIC:col36+37 | TOTAL:col39+40
 function processSheet2(rows) {
-  // rows[i] es objeto con claves numéricas = índice de columna Excel (base 1)
-  // obj[1]=colB=año | obj[2]=colC=entidad
-  // Valor glosa por mes: ENERO=obj[4], FEB=obj[7], MAR=obj[10], ABR=obj[13],
-  //   MAY=obj[16], JUN=obj[19], JUL=obj[22], AGO=obj[25], SEP=obj[28],
-  //   OCT=obj[31], NOV=obj[34], DIC=obj[37] | TOTAL=obj[40]
+  // Estrategia: identificar bloques delimitados por filas cabecera (col2='ENTIDAD')
+  // Cada bloque tiene: fila_cabecera, año en primera fila de datos (col1=número), entidades (col2=nombre)
+  // Solo leer el primer bloque por año (el mensual) — ignorar bloques de acumulados
   var VAL_IDX = [4,7,10,13,16,19,22,25,28,31,34,37];
   var byYearEnt = {};
-  var currentYear = null;
 
+  // Paso 1: encontrar todas las filas cabecera (col2 === 'ENTIDAD')
+  var cabeceraFilas = [];
   for (var i = 0; i < rows.length; i++) {
-    var r = rows[i];
-    if (!r) continue;
-
-    // Año en col B (obj[1])
-    var vB = r[1];
-    if (typeof vB === 'number' && vB > 2015 && vB < 2100) {
-      currentYear = Math.round(vB);
+    var v2 = rows[i][2];
+    if (v2 && String(v2).trim() === 'ENTIDAD') {
+      cabeceraFilas.push(i);
     }
+  }
+  // Agregar sentinela al final
+  cabeceraFilas.push(rows.length);
 
-    // Entidad en col C (obj[2])
-    var entidad = r[2] ? String(r[2]).trim() : null;
-    // Fila de cabecera — resetear año para no leer secciones de acumulados
-    if (entidad === 'ENTIDAD') { currentYear = null; continue; }
-    if (!entidad || entidad === '' || entidad === 'TOTAL') continue;
+  // Paso 2: procesar cada bloque entre cabeceras
+  var añosVistos = {};
+  for (var bi = 0; bi < cabeceraFilas.length - 1; bi++) {
+    var filaInicio = cabeceraFilas[bi] + 1;
+    var filaFin    = cabeceraFilas[bi + 1];
+
+    // Detectar año del bloque (primera fila con número en col1)
+    var currentYear = null;
+    for (var fi = filaInicio; fi < filaFin; fi++) {
+      var v1 = rows[fi][1];
+      if (typeof v1 === 'number' && v1 > 2015 && v1 < 2100) {
+        currentYear = Math.round(v1);
+        break;
+      }
+    }
     if (!currentYear) continue;
-    // Ignorar filas de totales (col2 vacío = fila de subtotal)
-    if (!r[2]) continue;
+
+    // Solo procesar el PRIMER bloque de cada año (el mensual)
+    // Los bloques de acumulados vienen después y tienen el mismo año
+    if (añosVistos[currentYear]) continue;
+    añosVistos[currentYear] = true;
 
     if (!byYearEnt[currentYear]) byYearEnt[currentYear] = {};
-    if (!byYearEnt[currentYear][entidad]) byYearEnt[currentYear][entidad] = {};
 
-    MESES.forEach(function(mes, mi) {
-      var vi = VAL_IDX[mi];
-      byYearEnt[currentYear][entidad][mes] = {
-        cant:  parseNum(r[vi - 1]),
-        valor: parseNum(r[vi]),
-        pct:   parseNum(r[vi + 1])
+    // Leer entidades del bloque
+    for (var fi2 = filaInicio; fi2 < filaFin; fi2++) {
+      var r = rows[fi2];
+      var entidad = r[2] ? String(r[2]).trim() : null;
+      if (!entidad || entidad === 'ENTIDAD' || entidad === 'TOTAL' || entidad === '') continue;
+
+      if (!byYearEnt[currentYear][entidad]) byYearEnt[currentYear][entidad] = {};
+
+      MESES.forEach(function(mes, mi) {
+        var vi = VAL_IDX[mi];
+        byYearEnt[currentYear][entidad][mes] = {
+          cant:  parseNum(r[vi - 1]),
+          valor: parseNum(r[vi]),
+          pct:   parseNum(r[vi + 1])
+        };
+      });
+      byYearEnt[currentYear][entidad]['TOTAL'] = {
+        cant:  parseNum(r[39]),
+        valor: parseNum(r[40]),
+        pct:   parseNum(r[41])
       };
-    });
-    byYearEnt[currentYear][entidad]['TOTAL'] = {
-      cant:  parseNum(r[39]),
-      valor: parseNum(r[40]),
-      pct:   parseNum(r[41])
-    };
+    }
   }
   return { byYearEnt: byYearEnt };
 }
@@ -1008,20 +1027,7 @@ window.doLoad = async function(ipsId) {
       }
 
       const sheet1 = processSheet1(rows1);
-      // LOG: ver qué lee el browser para 2026
-      var log2026 = [];
-      for (var ri2 = 0; ri2 < rows2.length; ri2++) {
-        var r2 = rows2[ri2];
-        if (r2[1] === 2026 || (log2026.length > 0 && log2026.length < 25)) {
-          if (r2[1] === 2026) log2026 = [];
-          log2026.push({fila: ri2+1, col1:r2[1], col2:r2[2], col4:r2[4], col7:r2[7]});
-        }
-      }
-      console.log('Bloque 2026 H2 (primeras filas):', JSON.stringify(log2026.slice(0,8)));
       const sheet2 = processSheet2(rows2);
-      console.log('byYearEnt 2026 entidades:', Object.keys(sheet2.byYearEnt[2026]||{}).length);
-      var ent1 = Object.keys(sheet2.byYearEnt[2026]||{})[0];
-      if(ent1) console.log('Primera entidad 2026:', ent1, JSON.stringify(sheet2.byYearEnt[2026][ent1]));
 
       // ── MALLA DE VALIDACIÓN CRUZADA (bloqueante) ──
       const erroresValidacion = validateCrossSheet(sheet1, sheet2);

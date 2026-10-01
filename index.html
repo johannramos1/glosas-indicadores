@@ -861,7 +861,34 @@ function processSheet2(rows) {
       };
     }
   }
-  return { byYearEnt: byYearEnt };
+
+  // ── NUEVO: Extraer Glosa Inicial Total desde cols AV/AW/AX ──
+  // AV=47 (AÑO), AW=48 (MES), AX=49 (GLOSA INICIAL TOTAL)
+  // Comienza en fila 4 (índice 3 = cabecera: AÑO, MES, GLOSA INICIAL TOTAL)
+  var gInicialTotal = {}; // { 2024: { 'ENERO': valor, 'FEBRERO': valor, ... }, 2025: {...} }
+  for (var ri = 0; ri < rows.length; ri++) {
+    var rGi = rows[ri];
+    if (!rGi) continue;
+    var yrGi = rGi[47]; // col AV
+    var mesGi = rGi[48]; // col AW
+    var valGi = rGi[49]; // col AX
+    if (yrGi === null || yrGi === undefined || yrGi === '') continue;
+    if (!mesGi) continue;
+    // Omitir fila cabecera (texto 'AÑO' en col AV)
+    if (typeof yrGi === 'string' && yrGi.toUpperCase().trim() === 'AÑO') continue;
+    var yrNum = parseInt(yrGi);
+    if (isNaN(yrNum) || yrNum < 2015 || yrNum > 2100) continue;
+    var mesStr = String(mesGi).toUpperCase().trim();
+    if (MESES.indexOf(mesStr) < 0) {
+      console.warn('Glosa Inicial Total: mes inválido en AW ignorado:', mesStr, '— use nombre completo (ENERO, FEBRERO...)');
+      continue;
+    }
+    var valNum = parseNum(valGi);
+    if (!gInicialTotal[yrNum]) gInicialTotal[yrNum] = {};
+    gInicialTotal[yrNum][mesStr] = valNum;
+  }
+
+  return { byYearEnt: byYearEnt, gInicialTotal: gInicialTotal };
 }
 
 // ═══════════════════════════════════════════════
@@ -1049,11 +1076,12 @@ window.doLoad = async function(ipsId) {
       }
       // Construir rows2 como array de objetos con claves fijas
       var rows2 = [];
-      var range = XLSX.utils.decode_range(ws2['!ref'] || 'A1:AP200');
+      var range = XLSX.utils.decode_range(ws2['!ref'] || 'A1:AX200');
       for (var rn = range.s.r; rn <= range.e.r; rn++) {
         var obj = {};
-        // Leer columnas B(1) a AP(41) por índice numérico de columna
-        for (var cn = 1; cn <= 47; cn++) {
+        // Leer columnas B(1) a AX(49) por índice numérico de columna
+        // AV=47 (AÑO), AW=48 (MES), AX=49 (GLOSA INICIAL TOTAL)
+        for (var cn = 1; cn <= 49; cn++) {
           var cellAddr = XLSX.utils.encode_cell({r: rn, c: cn});
           var cell = ws2[cellAddr];
           obj[cn] = cell ? cell.v : null;
@@ -1078,10 +1106,27 @@ window.doLoad = async function(ipsId) {
         sheet1.cutoffStr = d.toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'});
       }
 
+      // Enriquecer sheet1.byYear[y].totGlosaInicial y rows[].glosaInicialTotal
+      const gInicial = sheet2.gInicialTotal || {};
+      Object.keys(sheet1.byYear).forEach(function(yKey){
+        var yr = parseInt(yKey);
+        var yData = sheet1.byYear[yr];
+        var sumGi = 0;
+        if (yData.rows) {
+          yData.rows.forEach(function(row){
+            var gi = (gInicial[yr] && gInicial[yr][row.mes] !== undefined) ? gInicial[yr][row.mes] : 0;
+            row.glosaInicialTotal = gi;
+            sumGi += gi;
+          });
+        }
+        yData.totGlosaInicial = sumGi;
+      });
+
       const snapshot = {
         ipsId, cutoffStr: sheet1.cutoffStr, savedAt: new Date().toISOString(),
         byYear: sheet1.byYear, byYearMes: sheet1.byYearMes,
         byYearEnt: sheet2.byYearEnt,
+        gInicialTotal: gInicial,
         years: Object.keys(sheet1.byYear).map(Number).sort()
       };
 
@@ -1167,22 +1212,27 @@ function renderResumen() {
   function calcTotals(data, filterYear) {
     if (!data) return null;
     const years = filterYear === 'todos' ? Object.keys(data.byYear).map(Number) : [filterYear];
-    let totRad=0, totGlosa=0, totAcept=0, totNoRec=0, totCuentas=0;
+    let totRad=0, totGlosa=0, totGlosaIni=0, totAcept=0, totNoRec=0, totCuentas=0;
     years.forEach(y => {
       const d = data.byYear[y];
       if (!d) return;
-      totRad    += d.totRad||0;
-      totGlosa  += d.totGlosa||0;
-      totAcept  += d.totAcept||0;
-      totNoRec  += d.totNoRec||0;
-      totCuentas+= d.totCuentas||0;
+      totRad       += d.totRad||0;
+      totGlosa     += d.totGlosa||0;
+      totGlosaIni  += d.totGlosaInicial||0;
+      totAcept     += d.totAcept||0;
+      totNoRec     += d.totNoRec||0;
+      totCuentas   += d.totCuentas||0;
     });
     const totPagado = Math.max(0, totRad - totNoRec);
+    const totGestionada = Math.max(0, totGlosaIni - totGlosa);
     return {
-      totRad, totGlosa, totAcept, totNoRec, totCuentas: totCuentas||0, totPagado,
-      pctGlosa:  totRad>0 ? totGlosa/totRad  : 0,
-      pctNoRec:  totRad>0 ? totNoRec/totRad  : 0,
-      pctPagado: totRad>0 ? totPagado/totRad : 0,
+      totRad, totGlosa, totGlosaIni, totGestionada,
+      totAcept, totNoRec, totCuentas: totCuentas||0, totPagado,
+      pctGlosa:       totRad>0       ? totGlosa/totRad      : 0,
+      pctGlosaIni:    totRad>0       ? totGlosaIni/totRad   : 0,
+      pctGestionada:  totGlosaIni>0  ? totGestionada/totGlosaIni : 0,
+      pctNoRec:       totRad>0       ? totNoRec/totRad      : 0,
+      pctPagado:      totRad>0       ? totPagado/totRad     : 0,
       years: years.filter(y => data.byYear[y])
     };
   }
@@ -1273,6 +1323,10 @@ function renderResumen() {
   html += '<th style="text-align:left">AÑO</th>';
   html += '<th>CUENTAS</th>';
   html += '<th>RADICADO</th>';
+  html += '<th style="color:#1d6ca8">GLOSA INI T</th>';
+  html += '<th>% GLOSA INI T</th>';
+  html += '<th style="color:#2d9e6b">GLOSA GESTIONADA</th>';
+  html += '<th>% GESTION.</th>';
   html += '<th style="color:#1d6ca8">GLOSA VIVA</th>';
   html += '<th>% GLOSA</th>';
   html += '<th style="color:#2d9e6b">VALOR PAGADO</th>';
@@ -1290,8 +1344,8 @@ function renderResumen() {
   } else {
     tableYears = filterYear === 'todos' ? allYears : allYears.filter(y => y === filterYear);
   }
-  let gRad=0, gGlosa=0, gPag=0, gNoRec=0, gCue=0;
-  let gRadR=0, gGlosaR=0, gPagR=0, gNoRecR=0, gCueR=0;
+  let gRad=0, gGlosa=0, gGlosaIniD=0, gGestD=0, gPag=0, gNoRec=0, gCue=0;
+  let gRadR=0, gGlosaR=0, gGlosaIniR=0, gGestR=0, gPagR=0, gNoRecR=0, gCueR=0;
 
   tableYears.forEach(function(y) {
     // Fila Dolormed
@@ -1302,11 +1356,21 @@ function renderResumen() {
       const pN = d.totRad>0?d.totNoRec/d.totRad:0;
       const pP = d.totRad>0?pagado/d.totRad:0;
       const isCur = y===curYearD;
-      gRad+=d.totRad; gGlosa+=d.totGlosa; gPag+=pagado; gNoRec+=d.totNoRec; gCue+=d.totCuentas;
+      // Nuevas métricas: Glosa Inicial Total y Gestionada
+      const gIniD = d.totGlosaInicial||0;
+      const gestD = Math.max(0, gIniD - d.totGlosa);
+      const pGID  = d.totRad>0 ? gIniD/d.totRad : 0;
+      const pGesD = gIniD>0    ? gestD/gIniD    : 0;
+      gRad+=d.totRad; gGlosa+=d.totGlosa; gGlosaIniD+=gIniD; gGestD+=gestD;
+      gPag+=pagado; gNoRec+=d.totNoRec; gCue+=d.totCuentas;
       html += '<tr'+(isCur?' style="background:#f0faf3;"':'')+'>'+
         '<td><strong>'+y+'</strong>'+(isCur?' <span class="badge badge-green" style="font-size:9px">Actual</span>':'')+' </td>'+
         '<td class="mono">'+fmt0(d.totCuentas)+'</td>'+
         '<td class="mono">'+fmtCOP(d.totRad)+'</td>'+
+        '<td class="mono" style="color:#1d6ca8">'+fmtCOP(gIniD)+'</td>'+
+        '<td><span class="badge '+(pGID>0.3?'badge-red':pGID>0.1?'badge-amber':'badge-green')+'">'+fmtPct(pGID)+'</span></td>'+
+        '<td class="mono" style="color:#2d9e6b">'+fmtCOP(gestD)+'</td>'+
+        '<td><span class="badge '+(pGesD>=0.7?'badge-green':pGesD>=0.4?'badge-amber':'badge-red')+'">'+fmtPct(pGesD)+'</span></td>'+
         '<td class="mono" style="color:#1d6ca8">'+fmtCOP(d.totGlosa)+'</td>'+
         '<td><span class="badge '+(pG>0.3?'badge-red':pG>0.1?'badge-amber':'badge-green')+'">'+fmtPct(pG)+'</span></td>'+
         '<td class="mono" style="color:#2d9e6b">'+fmtCOP(pagado)+'</td>'+
@@ -1324,11 +1388,20 @@ function renderResumen() {
       const pN = d.totRad>0?d.totNoRec/d.totRad:0;
       const pP = d.totRad>0?pagado/d.totRad:0;
       const isCur = y===curYearR;
-      gRadR+=d.totRad; gGlosaR+=d.totGlosa; gPagR+=pagado; gNoRecR+=d.totNoRec; gCueR+=d.totCuentas;
+      const gIniR = d.totGlosaInicial||0;
+      const gestR = Math.max(0, gIniR - d.totGlosa);
+      const pGIR  = d.totRad>0 ? gIniR/d.totRad : 0;
+      const pGesR = gIniR>0    ? gestR/gIniR    : 0;
+      gRadR+=d.totRad; gGlosaR+=d.totGlosa; gGlosaIniR+=gIniR; gGestR+=gestR;
+      gPagR+=pagado; gNoRecR+=d.totNoRec; gCueR+=d.totCuentas;
       html += '<tr'+(isCur?' style="background:#eff6ff;"':'')+'>'+
         '<td><strong>'+y+'</strong>'+(isCur?' <span class="badge badge-blue" style="font-size:9px">Actual</span>':'')+' </td>'+
         '<td class="mono">'+fmt0(d.totCuentas)+'</td>'+
         '<td class="mono">'+fmtCOP(d.totRad)+'</td>'+
+        '<td class="mono" style="color:#1d6ca8">'+fmtCOP(gIniR)+'</td>'+
+        '<td><span class="badge '+(pGIR>0.3?'badge-red':pGIR>0.1?'badge-amber':'badge-green')+'">'+fmtPct(pGIR)+'</span></td>'+
+        '<td class="mono" style="color:#2d9e6b">'+fmtCOP(gestR)+'</td>'+
+        '<td><span class="badge '+(pGesR>=0.7?'badge-green':pGesR>=0.4?'badge-amber':'badge-red')+'">'+fmtPct(pGesR)+'</span></td>'+
         '<td class="mono" style="color:#1d6ca8">'+fmtCOP(d.totGlosa)+'</td>'+
         '<td><span class="badge '+(pG>0.3?'badge-red':pG>0.1?'badge-amber':'badge-green')+'">'+fmtPct(pG)+'</span></td>'+
         '<td class="mono" style="color:#2d9e6b">'+fmtCOP(pagado)+'</td>'+
@@ -1342,11 +1415,17 @@ function renderResumen() {
 
   // Filas de totales DOL y RED
   if (gRad > 0) {
-    const tpGd = gRad>0?gGlosa/gRad:0, tpNd = gRad>0?gNoRec/gRad:0, tpPd = gRad>0?gPag/gRad:0;
+    const tpGd  = gRad>0?gGlosa/gRad:0, tpNd = gRad>0?gNoRec/gRad:0, tpPd = gRad>0?gPag/gRad:0;
+    const tpGId = gRad>0 ? gGlosaIniD/gRad : 0;
+    const tpGes_D = gGlosaIniD>0 ? gGestD/gGlosaIniD : 0;
     html += '<tr class="total-row">'+
       '<td>TOTAL DOL</td>'+
       '<td class="mono">'+fmt0(gCue)+'</td>'+
       '<td class="mono">'+fmtCOP(gRad)+'</td>'+
+      '<td class="mono" style="color:#1d6ca8">'+fmtCOP(gGlosaIniD)+'</td>'+
+      '<td><strong>'+fmtPct(tpGId)+'</strong></td>'+
+      '<td class="mono" style="color:#2d9e6b">'+fmtCOP(gGestD)+'</td>'+
+      '<td><strong>'+fmtPct(tpGes_D)+'</strong></td>'+
       '<td class="mono" style="color:#1d6ca8">'+fmtCOP(gGlosa)+'</td>'+
       '<td><strong>'+fmtPct(tpGd)+'</strong></td>'+
       '<td class="mono" style="color:#2d9e6b">'+fmtCOP(gPag)+'</td>'+
@@ -1357,11 +1436,17 @@ function renderResumen() {
     '</tr>';
   }
   if (gRadR > 0) {
-    const tpGr = gRadR>0?gGlosaR/gRadR:0, tpNr = gRadR>0?gNoRecR/gRadR:0, tpPr = gRadR>0?gPagR/gRadR:0;
+    const tpGr  = gRadR>0?gGlosaR/gRadR:0, tpNr = gRadR>0?gNoRecR/gRadR:0, tpPr = gRadR>0?gPagR/gRadR:0;
+    const tpGIr = gRadR>0 ? gGlosaIniR/gRadR : 0;
+    const tpGes_R = gGlosaIniR>0 ? gGestR/gGlosaIniR : 0;
     html += '<tr class="total-row">'+
       '<td>TOTAL RED</td>'+
       '<td class="mono">'+fmt0(gCueR)+'</td>'+
       '<td class="mono">'+fmtCOP(gRadR)+'</td>'+
+      '<td class="mono" style="color:#1d6ca8">'+fmtCOP(gGlosaIniR)+'</td>'+
+      '<td><strong>'+fmtPct(tpGIr)+'</strong></td>'+
+      '<td class="mono" style="color:#2d9e6b">'+fmtCOP(gGestR)+'</td>'+
+      '<td><strong>'+fmtPct(tpGes_R)+'</strong></td>'+
       '<td class="mono" style="color:#1d6ca8">'+fmtCOP(gGlosaR)+'</td>'+
       '<td><strong>'+fmtPct(tpGr)+'</strong></td>'+
       '<td class="mono" style="color:#2d9e6b">'+fmtCOP(gPagR)+'</td>'+
@@ -1479,17 +1564,22 @@ function mensualTable(data, ipsName, filterYear, color) {
   if (!y || !y.rows || !y.rows.length) return '<div style="padding:20px;text-align:center;color:var(--text-light)">Sin datos para '+filterYear+'</div>';
 
   let html = '<div style="font-size:12px;font-weight:700;color:'+color+';padding:10px 14px;border-bottom:1px solid var(--border);background:#fafafa">'+ipsName+' · Corte: '+data.cutoffStr+'</div>';
-  html += '<div style="overflow-x:auto"><table style="width:100%">';
+  // Tabla compactada: fuente 11px, padding reducido para acomodar más columnas sin estirar
+  html += '<div style="overflow-x:auto"><table style="width:100%;font-size:11px">';
   html += '<thead><tr>';
-  html += '<th style="text-align:left">MES</th>';
-  html += '<th>CUENTAS</th>';
-  html += '<th>RADICADO</th>';
-  html += '<th style="color:#1d6ca8">GLOSA VIVA</th>';
-  html += '<th>% GLOSA</th>';
-  html += '<th style="color:#2d9e6b">VALOR PAGADO</th>';
-  html += '<th>% PAG.</th>';
-  html += '<th style="color:#dc2626">NO RECUPERADO</th>';
-  html += '<th>% NO REC.</th>';
+  html += '<th style="text-align:left;padding:7px 6px">MES</th>';
+  html += '<th style="padding:7px 6px">CUENTAS</th>';
+  html += '<th style="padding:7px 6px">RADICADO</th>';
+  html += '<th style="color:#1d6ca8;padding:7px 6px;font-size:9px">GLOSA INI T</th>';
+  html += '<th style="padding:7px 6px;font-size:9px">% GLOSA INI T</th>';
+  html += '<th style="color:#2d9e6b;padding:7px 6px;font-size:9px">GLOSA GESTIONADA</th>';
+  html += '<th style="padding:7px 6px;font-size:9px">% GESTION.</th>';
+  html += '<th style="color:#1d6ca8;padding:7px 6px">GLOSA VIVA</th>';
+  html += '<th style="padding:7px 6px">% GLOSA</th>';
+  html += '<th style="color:#2d9e6b;padding:7px 6px">VALOR PAGADO</th>';
+  html += '<th style="padding:7px 6px">% PAG.</th>';
+  html += '<th style="color:#dc2626;padding:7px 6px">NO RECUPERADO</th>';
+  html += '<th style="padding:7px 6px">% NO REC.</th>';
   html += '</tr></thead><tbody>';
 
   y.rows.forEach(function(r) {
@@ -1498,16 +1588,27 @@ function mensualTable(data, ipsName, filterYear, color) {
     const pPag = r.valRad>0 ? pagado/r.valRad : 0;
     const pNoRec = r.pctNoRec||0;
     const badgePG = pGV>0.3?'badge-red':pGV>0.1?'badge-amber':'badge-green';
+    // Nuevas métricas por mes
+    const gIni  = r.glosaInicialTotal||0;
+    const gest  = Math.max(0, gIni - r.valGlosa);
+    const pGI   = r.valRad>0 ? gIni/r.valRad : 0;
+    const pGes  = gIni>0     ? gest/gIni     : 0;
+    const bPGI  = pGI>0.3?'badge-red':pGI>0.1?'badge-amber':'badge-green';
+    const bPGes = pGes>=0.7?'badge-green':pGes>=0.4?'badge-amber':'badge-red';
     html += '<tr>'+
-      '<td style="font-size:12px;font-weight:500">'+r.mes.substring(0,3)+'</td>'+
-      '<td class="mono">'+fmt0(r.cuentasRad)+'</td>'+
-      '<td class="mono">'+fmtCOP(r.valRad)+'</td>'+
-      '<td class="mono" style="color:#1d6ca8">'+fmtCOP(r.valGlosa)+'</td>'+
-      '<td><span class="badge '+badgePG+'">'+fmtPct(pGV)+'</span></td>'+
-      '<td class="mono" style="color:#2d9e6b">'+fmtCOP(pagado)+'</td>'+
-      '<td style="color:#2d9e6b">'+fmtPct(pPag)+'</td>'+
-      '<td class="mono" style="color:#dc2626">'+fmtCOP(r.valNoRec)+'</td>'+
-      '<td>'+fmtPct(pNoRec)+'</td>'+
+      '<td style="font-size:11px;font-weight:500;padding:6px">'+r.mes.substring(0,3)+'</td>'+
+      '<td class="mono" style="padding:6px">'+fmt0(r.cuentasRad)+'</td>'+
+      '<td class="mono" style="padding:6px">'+fmtCOP(r.valRad)+'</td>'+
+      '<td class="mono" style="color:#1d6ca8;padding:6px">'+(gIni>0?fmtCOP(gIni):'—')+'</td>'+
+      '<td style="padding:6px">'+(gIni>0?'<span class="badge '+bPGI+'">'+fmtPct(pGI)+'</span>':'—')+'</td>'+
+      '<td class="mono" style="color:#2d9e6b;padding:6px">'+(gIni>0?fmtCOP(gest):'—')+'</td>'+
+      '<td style="padding:6px">'+(gIni>0?'<span class="badge '+bPGes+'">'+fmtPct(pGes)+'</span>':'—')+'</td>'+
+      '<td class="mono" style="color:#1d6ca8;padding:6px">'+fmtCOP(r.valGlosa)+'</td>'+
+      '<td style="padding:6px"><span class="badge '+badgePG+'">'+fmtPct(pGV)+'</span></td>'+
+      '<td class="mono" style="color:#2d9e6b;padding:6px">'+fmtCOP(pagado)+'</td>'+
+      '<td style="color:#2d9e6b;padding:6px">'+fmtPct(pPag)+'</td>'+
+      '<td class="mono" style="color:#dc2626;padding:6px">'+fmtCOP(r.valNoRec)+'</td>'+
+      '<td style="padding:6px">'+fmtPct(pNoRec)+'</td>'+
     '</tr>';
   });
 
@@ -1515,16 +1616,27 @@ function mensualTable(data, ipsName, filterYear, color) {
   const pGTot = y.totRad>0?y.totGlosa/y.totRad:0;
   const pNTot = y.totRad>0?y.totNoRec/y.totRad:0;
   const pPTot = y.totRad>0?pagadoTot/y.totRad:0;
+  // Totales anuales de nuevas métricas
+  const gIniTot = y.totGlosaInicial||0;
+  const gestTot = Math.max(0, gIniTot - y.totGlosa);
+  const pGITot  = y.totRad>0 ? gIniTot/y.totRad : 0;
+  const pGesTot = gIniTot>0  ? gestTot/gIniTot  : 0;
+  const bPGITot  = pGITot>0.3?'badge-red':pGITot>0.1?'badge-amber':'badge-green';
+  const bPGesTot = pGesTot>=0.7?'badge-green':pGesTot>=0.4?'badge-amber':'badge-red';
   html += '<tr class="subtotal">'+
-    '<td>TOTAL</td>'+
-    '<td class="mono">'+fmt0(y.totCuentas)+'</td>'+
-    '<td class="mono">'+fmtCOP(y.totRad)+'</td>'+
-    '<td class="mono" style="color:#1d6ca8">'+fmtCOP(y.totGlosa)+'</td>'+
-    '<td><span class="badge '+(pGTot>0.3?'badge-red':pGTot>0.1?'badge-amber':'badge-green')+'">'+fmtPct(pGTot)+'</span></td>'+
-    '<td class="mono" style="color:#2d9e6b">'+fmtCOP(pagadoTot)+'</td>'+
-    '<td style="color:#2d9e6b">'+fmtPct(pPTot)+'</td>'+
-    '<td class="mono" style="color:#dc2626">'+fmtCOP(y.totNoRec)+'</td>'+
-    '<td>'+fmtPct(pNTot)+'</td>'+
+    '<td style="padding:7px 6px">TOTAL</td>'+
+    '<td class="mono" style="padding:7px 6px">'+fmt0(y.totCuentas)+'</td>'+
+    '<td class="mono" style="padding:7px 6px">'+fmtCOP(y.totRad)+'</td>'+
+    '<td class="mono" style="color:#1d6ca8;padding:7px 6px">'+(gIniTot>0?fmtCOP(gIniTot):'—')+'</td>'+
+    '<td style="padding:7px 6px">'+(gIniTot>0?'<span class="badge '+bPGITot+'">'+fmtPct(pGITot)+'</span>':'—')+'</td>'+
+    '<td class="mono" style="color:#2d9e6b;padding:7px 6px">'+(gIniTot>0?fmtCOP(gestTot):'—')+'</td>'+
+    '<td style="padding:7px 6px">'+(gIniTot>0?'<span class="badge '+bPGesTot+'">'+fmtPct(pGesTot)+'</span>':'—')+'</td>'+
+    '<td class="mono" style="color:#1d6ca8;padding:7px 6px">'+fmtCOP(y.totGlosa)+'</td>'+
+    '<td style="padding:7px 6px"><span class="badge '+(pGTot>0.3?'badge-red':pGTot>0.1?'badge-amber':'badge-green')+'">'+fmtPct(pGTot)+'</span></td>'+
+    '<td class="mono" style="color:#2d9e6b;padding:7px 6px">'+fmtCOP(pagadoTot)+'</td>'+
+    '<td style="color:#2d9e6b;padding:7px 6px">'+fmtPct(pPTot)+'</td>'+
+    '<td class="mono" style="color:#dc2626;padding:7px 6px">'+fmtCOP(y.totNoRec)+'</td>'+
+    '<td style="padding:7px 6px">'+fmtPct(pNTot)+'</td>'+
   '</tr>';
   html += '</tbody></table></div>';
   return html;

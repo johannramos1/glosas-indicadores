@@ -863,30 +863,37 @@ function processSheet2(rows) {
   }
 
   // ── NUEVO: Extraer Glosa Inicial Total desde cols AV/AW/AX ──
-  // AV=47 (AÑO), AW=48 (MES), AX=49 (GLOSA INICIAL TOTAL)
-  // Comienza en fila 4 (índice 3 = cabecera: AÑO, MES, GLOSA INICIAL TOTAL)
-  var gInicialTotal = {}; // { 2024: { 'ENERO': valor, 'FEBRERO': valor, ... }, 2025: {...} }
+  var gInicialTotal = {};
+  console.log('[DIAG] Iniciando lectura AV/AW/AX. Total filas:', rows.length);
+  // Mostrar primeras 10 filas con contenido en col 47/48/49
+  var filasConDatos = 0;
   for (var ri = 0; ri < rows.length; ri++) {
     var rGi = rows[ri];
     if (!rGi) continue;
-    var yrGi = rGi[47]; // col AV
-    var mesGi = rGi[48]; // col AW
-    var valGi = rGi[49]; // col AX
+    var yrGi = rGi[47];
+    var mesGi = rGi[48];
+    var valGi = rGi[49];
+    if (yrGi !== null && yrGi !== undefined && yrGi !== '') {
+      if (filasConDatos < 10) {
+        console.log('[DIAG] Fila '+(ri+1)+': AV='+JSON.stringify(yrGi)+' AW='+JSON.stringify(mesGi)+' AX='+JSON.stringify(valGi));
+        filasConDatos++;
+      }
+    }
     if (yrGi === null || yrGi === undefined || yrGi === '') continue;
     if (!mesGi) continue;
-    // Omitir fila cabecera (texto 'AÑO' en col AV)
     if (typeof yrGi === 'string' && yrGi.toUpperCase().trim() === 'AÑO') continue;
     var yrNum = parseInt(yrGi);
     if (isNaN(yrNum) || yrNum < 2015 || yrNum > 2100) continue;
     var mesStr = String(mesGi).toUpperCase().trim();
     if (MESES.indexOf(mesStr) < 0) {
-      console.warn('Glosa Inicial Total: mes inválido en AW ignorado:', mesStr, '— use nombre completo (ENERO, FEBRERO...)');
+      console.warn('[DIAG] mes inválido en AW ignorado:', mesStr);
       continue;
     }
     var valNum = parseNum(valGi);
     if (!gInicialTotal[yrNum]) gInicialTotal[yrNum] = {};
     gInicialTotal[yrNum][mesStr] = valNum;
   }
+  console.log('[DIAG] gInicialTotal resultado:', JSON.stringify(gInicialTotal));
 
   return { byYearEnt: byYearEnt, gInicialTotal: gInicialTotal };
 }

@@ -1270,6 +1270,8 @@ function renderResumen() {
   html += '<th>% GLOSA</th>';
   html += '<th style="color:#2d9e6b">VALOR PAGADO</th>';
   html += '<th>% PAGADO</th>';
+  html += '<th style="color:#0f766e">VALOR ACEPTADO</th>';
+  html += '<th>% ACEPTADO</th>';
   html += '<th style="color:#dc2626">NO RECUPERADO</th>';
   html += '<th>% NO REC.</th>';
   html += '<th style="font-size:10px;color:#6b7280">IPS</th>';
@@ -1283,8 +1285,8 @@ function renderResumen() {
   } else {
     tableYears = filterYear === 'todos' ? allYears : allYears.filter(y => y === filterYear);
   }
-  let gRad=0, gGlosa=0, gGlosaIniD=0, gGestD=0, gPag=0, gNoRec=0, gCue=0;
-  let gRadR=0, gGlosaR=0, gGlosaIniR=0, gGestR=0, gPagR=0, gNoRecR=0, gCueR=0;
+  let gRad=0, gGlosa=0, gGlosaIniD=0, gGestD=0, gPag=0, gNoRec=0, gCue=0, gAcepD=0;
+  let gRadR=0, gGlosaR=0, gGlosaIniR=0, gGestR=0, gPagR=0, gNoRecR=0, gCueR=0, gAcepR=0;
 
   tableYears.forEach(function(y) {
     // Fila Dolormed
@@ -1301,7 +1303,7 @@ function renderResumen() {
       const pGID  = d.totRad>0 ? gIniD/d.totRad : 0;
       const pGesD = gIniD>0    ? gestD/gIniD    : 0;
       gRad+=d.totRad; gGlosa+=d.totGlosa; gGlosaIniD+=gIniD; gGestD+=gestD;
-      gPag+=pagado; gNoRec+=d.totNoRec; gCue+=d.totCuentas;
+      gPag+=pagado; gNoRec+=d.totNoRec; gCue+=d.totCuentas; gAcepD+=d.totAcept||0;
       html += '<tr'+(isCur?' style="background:#f0faf3;"':'')+'>'+
         '<td><strong>'+y+'</strong>'+(isCur?' <span class="badge badge-green" style="font-size:9px">Actual</span>':'')+' </td>'+
         '<td class="mono">'+fmt0(d.totCuentas)+'</td>'+
@@ -1314,6 +1316,8 @@ function renderResumen() {
         '<td><span class="badge '+(pG>0.3?'badge-red':pG>0.1?'badge-amber':'badge-green')+'">'+fmtPct(pG)+'</span></td>'+
         '<td class="mono" style="color:#2d9e6b">'+fmtCOP(pagado)+'</td>'+
         '<td style="color:#2d9e6b">'+fmtPct(pP)+'</td>'+
+        '<td class="mono" style="color:#0f766e">'+fmtCOP(d.totAcept||0)+'</td>'+
+        '<td style="color:#0f766e">'+fmtPct(d.totRad>0?(d.totAcept||0)/d.totRad:0)+'</td>'+
         '<td class="mono" style="color:#dc2626">'+fmtCOP(d.totNoRec)+'</td>'+
         '<td>'+fmtPct(pN)+'</td>'+
         '<td><span style="background:#d8f3dc;color:#2d6a4f;padding:1px 7px;border-radius:8px;font-size:10px;font-weight:700">DOL</span></td>'+
@@ -1332,7 +1336,7 @@ function renderResumen() {
       const pGIR  = d.totRad>0 ? gIniR/d.totRad : 0;
       const pGesR = gIniR>0    ? gestR/gIniR    : 0;
       gRadR+=d.totRad; gGlosaR+=d.totGlosa; gGlosaIniR+=gIniR; gGestR+=gestR;
-      gPagR+=pagado; gNoRecR+=d.totNoRec; gCueR+=d.totCuentas;
+      gPagR+=pagado; gNoRecR+=d.totNoRec; gCueR+=d.totCuentas; gAcepR+=d.totAcept||0;
       html += '<tr'+(isCur?' style="background:#eff6ff;"':'')+'>'+
         '<td><strong>'+y+'</strong>'+(isCur?' <span class="badge badge-blue" style="font-size:9px">Actual</span>':'')+' </td>'+
         '<td class="mono">'+fmt0(d.totCuentas)+'</td>'+
@@ -1345,6 +1349,8 @@ function renderResumen() {
         '<td><span class="badge '+(pG>0.3?'badge-red':pG>0.1?'badge-amber':'badge-green')+'">'+fmtPct(pG)+'</span></td>'+
         '<td class="mono" style="color:#2d9e6b">'+fmtCOP(pagado)+'</td>'+
         '<td style="color:#2d9e6b">'+fmtPct(pP)+'</td>'+
+        '<td class="mono" style="color:#0f766e">'+fmtCOP(d.totAcept||0)+'</td>'+
+        '<td style="color:#0f766e">'+fmtPct(d.totRad>0?(d.totAcept||0)/d.totRad:0)+'</td>'+
         '<td class="mono" style="color:#dc2626">'+fmtCOP(d.totNoRec)+'</td>'+
         '<td>'+fmtPct(pN)+'</td>'+
         '<td><span style="background:#cce5f5;color:#1d3557;padding:1px 7px;border-radius:8px;font-size:10px;font-weight:700">RED</span></td>'+
@@ -1369,6 +1375,8 @@ function renderResumen() {
       '<td><strong>'+fmtPct(tpGd)+'</strong></td>'+
       '<td class="mono" style="color:#2d9e6b">'+fmtCOP(gPag)+'</td>'+
       '<td style="color:#2d9e6b"><strong>'+fmtPct(tpPd)+'</strong></td>'+
+      '<td class="mono" style="color:#0f766e">'+fmtCOP(gAcepD)+'</td>'+
+      '<td style="color:#0f766e"><strong>'+fmtPct(gRad>0?gAcepD/gRad:0)+'</strong></td>'+
       '<td class="mono" style="color:#dc2626">'+fmtCOP(gNoRec)+'</td>'+
       '<td><strong>'+fmtPct(tpNd)+'</strong></td>'+
       '<td><span style="background:#d8f3dc;color:#2d6a4f;padding:1px 7px;border-radius:8px;font-size:10px;font-weight:700">DOL</span></td>'+
@@ -1390,6 +1398,8 @@ function renderResumen() {
       '<td><strong>'+fmtPct(tpGr)+'</strong></td>'+
       '<td class="mono" style="color:#2d9e6b">'+fmtCOP(gPagR)+'</td>'+
       '<td style="color:#2d9e6b"><strong>'+fmtPct(tpPr)+'</strong></td>'+
+      '<td class="mono" style="color:#0f766e">'+fmtCOP(gAcepR)+'</td>'+
+      '<td style="color:#0f766e"><strong>'+fmtPct(gRadR>0?gAcepR/gRadR:0)+'</strong></td>'+
       '<td class="mono" style="color:#dc2626">'+fmtCOP(gNoRecR)+'</td>'+
       '<td><strong>'+fmtPct(tpNr)+'</strong></td>'+
       '<td><span style="background:#cce5f5;color:#1d3557;padding:1px 7px;border-radius:8px;font-size:10px;font-weight:700">RED</span></td>'+
@@ -1517,6 +1527,8 @@ function mensualTable(data, ipsName, filterYear, color) {
   html += '<th style="padding:7px 6px">% GLOSA</th>';
   html += '<th style="color:#2d9e6b;padding:7px 6px">VALOR PAGADO</th>';
   html += '<th style="padding:7px 6px">% PAG.</th>';
+  html += '<th style="color:#0f766e;padding:7px 6px">VALOR ACEPTADO</th>';
+  html += '<th style="padding:7px 6px">% ACEPTADO</th>';
   html += '<th style="color:#dc2626;padding:7px 6px">NO RECUPERADO</th>';
   html += '<th style="padding:7px 6px">% NO REC.</th>';
   html += '</tr></thead><tbody>';
@@ -1546,6 +1558,8 @@ function mensualTable(data, ipsName, filterYear, color) {
       '<td style="padding:6px"><span class="badge '+badgePG+'">'+fmtPct(pGV)+'</span></td>'+
       '<td class="mono" style="color:#2d9e6b;padding:6px">'+fmtCOP(pagado)+'</td>'+
       '<td style="color:#2d9e6b;padding:6px">'+fmtPct(pPag)+'</td>'+
+      '<td class="mono" style="color:#0f766e;padding:6px">'+fmtCOP(r.aceptadoVal||0)+'</td>'+
+      '<td style="color:#0f766e;padding:6px">'+fmtPct(r.pctAcept||0)+'</td>'+
       '<td class="mono" style="color:#dc2626;padding:6px">'+fmtCOP(r.valNoRec)+'</td>'+
       '<td style="padding:6px">'+fmtPct(pNoRec)+'</td>'+
     '</tr>';
@@ -1574,6 +1588,8 @@ function mensualTable(data, ipsName, filterYear, color) {
     '<td style="padding:7px 6px"><span class="badge '+(pGTot>0.3?'badge-red':pGTot>0.1?'badge-amber':'badge-green')+'">'+fmtPct(pGTot)+'</span></td>'+
     '<td class="mono" style="color:#2d9e6b;padding:7px 6px">'+fmtCOP(pagadoTot)+'</td>'+
     '<td style="color:#2d9e6b;padding:7px 6px">'+fmtPct(pPTot)+'</td>'+
+    '<td class="mono" style="color:#0f766e;padding:7px 6px">'+fmtCOP(y.totAcept||0)+'</td>'+
+    '<td style="color:#0f766e;padding:7px 6px">'+fmtPct(y.totRad>0?(y.totAcept||0)/y.totRad:0)+'</td>'+
     '<td class="mono" style="color:#dc2626;padding:7px 6px">'+fmtCOP(y.totNoRec)+'</td>'+
     '<td style="padding:7px 6px">'+fmtPct(pNTot)+'</td>'+
   '</tr>';
